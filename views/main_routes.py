@@ -1,22 +1,12 @@
-from flask import Blueprint, request, render_template, redirect, url_for, current_app, jsonify
+from flask import request, render_template, redirect, url_for, current_app, jsonify
 from lxml import etree
 import xml.sax.saxutils as saxutils
 from datetime import datetime
+from . import main
+from .utils import load_products
 
-main = Blueprint('main', __name__)
-
-# Mock product data
-products = [
-    {
-        "id": "P001",
-        "name": "Sample Product",
-        "description": ("Experience the best quality with our Sample Product. "
-                        "Crafted to perfection, this item is designed to meet your needs and "
-                        "exceed your expectations. Perfect for any occasion." * 5),
-        "price": "100.00",
-        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
-    }
-]
+# Load products from JSON file
+products = load_products('products.json')
 
 # Function to extract values between specific tags
 def extract_value(xml_str, start_tag, end_tag):
@@ -40,7 +30,7 @@ def create_punchout_order_message(buyer_cookie, product):
     buyer_cookie_elem.text = buyer_cookie
 
     # PunchOutOrderMessageHeader
-    header = etree.SubElement(punchout_order_message, "PunchOutOrderMessageHeader", operationAllowed="edit")
+    header = etree.SubElement(punchout_order_message, "PunchOutOrderMessageHeader", operationAllowed="create")
     total = etree.SubElement(header, "Total")
     money = etree.SubElement(total, "Money", currency="USD")
     money.text = product["price"]
@@ -50,23 +40,45 @@ def create_punchout_order_message(buyer_cookie, product):
     item_id = etree.SubElement(item_in, "ItemID")
     supplier_part_id = etree.SubElement(item_id, "SupplierPartID")
     supplier_part_id.text = product["id"]
-    buyer_part_id = etree.SubElement(item_id, "BuyerPartID")
-    buyer_part_id.text = product["id"]
+    supplier_part_aux_id = etree.SubElement(item_id, "SupplierPartAuxiliaryID")
+    supplier_part_aux_id.text = "140-1163021-7594456,1"
 
     item_detail = etree.SubElement(item_in, "ItemDetail")
     unit_price = etree.SubElement(item_detail, "UnitPrice")
     money = etree.SubElement(unit_price, "Money", currency="USD")
-    money.text = product["price"]
+    money.text = product["unit_price"]
     description = etree.SubElement(item_detail, "Description", lang="en")
     description.text = product["description"]
     unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
-    unit_of_measure.text = "EA"
+    unit_of_measure.text = product["unit_of_measure"]
     classification = etree.SubElement(item_detail, "Classification", domain="UNSPSC")
-    classification.text = "601210"
+    classification.text = product["classification"]
     manufacturer_part_id = etree.SubElement(item_detail, "ManufacturerPartID")
-    manufacturer_part_id.text = product["id"]
+    manufacturer_part_id.text = product["manufacturer_part_id"]
     manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
-    manufacturer_name.text = "Sample Manufacturer"
+    manufacturer_name.text = product["manufacturer_name"]
+
+    # Extrinsic fields
+    extrinsic_sold_by = etree.SubElement(item_detail, "Extrinsic", name="soldBy")
+    extrinsic_sold_by.text = product["sold_by"]
+    extrinsic_fulfilled_by = etree.SubElement(item_detail, "Extrinsic", name="fulfilledBy")
+    extrinsic_fulfilled_by.text = product["fulfilled_by"]
+    extrinsic_category = etree.SubElement(item_detail, "Extrinsic", name="category")
+    extrinsic_category.text = product["category"]
+    extrinsic_sub_category = etree.SubElement(item_detail, "Extrinsic", name="subCategory")
+    extrinsic_sub_category.text = product["sub_category"]
+    extrinsic_item_condition = etree.SubElement(item_detail, "Extrinsic", name="itemCondition")
+    extrinsic_item_condition.text = product["item_condition"]
+    extrinsic_qualified_offer = etree.SubElement(item_detail, "Extrinsic", name="qualifiedOffer")
+    extrinsic_qualified_offer.text = product["qualified_offer"]
+    extrinsic_upc = etree.SubElement(item_detail, "Extrinsic", name="UPC")
+    extrinsic_upc.text = product["upc"]
+    extrinsic_detail_page_url = etree.SubElement(item_detail, "Extrinsic", name="detailPageURL")
+    extrinsic_detail_page_url.text = product["detail_page_url"]
+    extrinsic_ean = etree.SubElement(item_detail, "Extrinsic", name="ean")
+    extrinsic_ean.text = product["ean"]
+    extrinsic_preference = etree.SubElement(item_detail, "Extrinsic", name="preference")
+    extrinsic_preference.text = product["preference"]
 
     return etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
 
@@ -125,7 +137,22 @@ def create_product():
             "name": request.form['name'],
             "description": request.form['description'],
             "price": request.form['price'],
-            "image": request.form['image']
+            "image": request.form['image'],
+            "unit_price": request.form['price'],
+            "unit_of_measure": "EA",
+            "classification": "601210",
+            "manufacturer_part_id": request.form['id'],
+            "manufacturer_name": "Sample Manufacturer",
+            "sold_by": "Our Company",
+            "fulfilled_by": "Our Company",
+            "category": "GENERAL",
+            "sub_category": "GENERAL_ITEMS",
+            "item_condition": "New",
+            "qualified_offer": "true",
+            "upc": "UPC-123456789012",
+            "detail_page_url": f"https://example.com/product/{request.form['id']}",
+            "ean": "1234567890123",
+            "preference": "default"
         }
         products.append(product_data)
         return redirect(url_for('main.catalog'))

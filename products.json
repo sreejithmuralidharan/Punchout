@@ -1,0 +1,24 @@
+[
+    {
+        "id": "P001",
+        "name": "Sample Product",
+        "description": "Experience the best quality with our Sample Product. Crafted to perfection, this item is designed to meet your needs and exceed your expectations. Perfect for any occasion.",
+        "price": "100.00",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+        "unit_price": "100.00",
+        "unit_of_measure": "EA",
+        "classification": "601210",
+        "manufacturer_part_id": "P001",
+        "manufacturer_name": "Sample Manufacturer",
+        "sold_by": "Our Company",
+        "fulfilled_by": "Our Company",
+        "category": "GENERAL",
+        "sub_category": "GENERAL_ITEMS",
+        "item_condition": "New",
+        "qualified_offer": "true",
+        "upc": "UPC-123456789012",
+        "detail_page_url": "https://example.com/product/P001",
+        "ean": "1234567890123",
+        "preference": "default"
+    }
+]
