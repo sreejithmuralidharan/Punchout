@@ -77,19 +77,25 @@ def punchout():
         incoming_data = request.data.decode('utf-8')
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
-        # Parse the XML payload to extract return_url
+        # Parse the XML payload to extract return_url and buyer_cookie
         try:
             namespace = {'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'}
             tree = ET.ElementTree(ET.fromstring(incoming_data))
+            root = tree.getroot()
+            current_app.logger.info(f"Parsed XML: {ET.tostring(root, encoding='utf8').decode('utf8')}")
+            
             browser_form_post = tree.find('.//cxml:BrowserFormPost', namespace)
             return_url = browser_form_post.find('cxml:URL', namespace).text if browser_form_post is not None else ''
-            buyer_cookie = tree.find('.//cxml:BuyerCookie', namespace).text
+            
+            buyer_cookie_element = tree.find('.//cxml:BuyerCookie', namespace)
+            buyer_cookie = buyer_cookie_element.text if buyer_cookie_element is not None else ''
         except Exception as e:
             current_app.logger.error(f"Error parsing XML: {e}")
             return_url = ''
             buyer_cookie = ''
 
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
+        current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
