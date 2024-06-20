@@ -12,7 +12,7 @@ product = {
                     "Crafted to perfection, this item is designed to meet your needs and "
                     "exceed your expectations. Perfect for any occasion." * 5),
     "price": "100.00",
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30"
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
 }
 
 # cXML PunchOut Setup Response Template
@@ -30,8 +30,11 @@ punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 </cXML>
 '''
 
+
 @app.route('/')
 def index():
+    return_url = request.args.get('return_url', '')
+    app.logger.info(f"Index - Return URL: {return_url}")
     return render_template_string('''
     <!DOCTYPE html>
     <html lang="en">
@@ -49,23 +52,29 @@ def index():
         </nav>
         <div class="container mx-auto p-4">
             <h1 class="text-2xl font-bold mb-4">Welcome to the PunchOut Catalog</h1>
-            <a href="/punchout" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
+            <a href="/punchout?return_url={{ return_url }}" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
         </div>
     </body>
     </html>
-    ''')
+    ''', return_url=return_url)
+
 
 @app.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     if request.method == 'POST':
         # Parse the XML payload to extract return_url
         tree = ET.fromstring(request.data)
-        browser_form_post = tree.find('.//{http://www.cxml.org/schemas/cXML/1.2.014}BrowserFormPost')
-        return_url = browser_form_post.find('{http://www.cxml.org/schemas/cXML/1.2.014}URL').text if browser_form_post is not None else ''
-        
+        browser_form_post = tree.find(
+            './/{http://xml.cxml.org/schemas/cXML/1.1.008}BrowserFormPost')
+        return_url = browser_form_post.find(
+            '{http://xml.cxml.org/schemas/cXML/1.1.008}URL').text if browser_form_post is not None else ''
+
+        app.logger.info(f"PunchOut - Return URL: {return_url}")
+
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
-        start_page_url = url_for('catalog', return_url=return_url, _external=True)
+        start_page_url = url_for(
+            'catalog', return_url=return_url, _external=True)
         return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
     return render_template_string('''
     <!DOCTYPE html>
@@ -98,8 +107,11 @@ def punchout():
     </html>
     ''', product=product, return_url=request.args.get('return_url', ''))
 
+
 @app.route('/catalog')
 def catalog():
+    return_url = request.args.get('return_url', '')
+    app.logger.info(f"Catalog - Return URL: {return_url}")
     return render_template_string('''
     <!DOCTYPE html>
     <html lang="en">
@@ -129,11 +141,13 @@ def catalog():
         </div>
     </body>
     </html>
-    ''', product=product, return_url=request.args.get('return_url', ''))
+    ''', product=product, return_url=return_url)
+
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
     return_url = request.args.get('return_url', '')
+    app.logger.info(f"Checkout - Return URL: {return_url}")
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
     order_details = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -152,8 +166,10 @@ def checkout():
 </cXML>
 '''
     if return_url:
+        app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
     return order_details
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
