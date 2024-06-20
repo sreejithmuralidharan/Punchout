@@ -1,5 +1,5 @@
 from flask import Blueprint, request, render_template, redirect, url_for, current_app
-import xml.etree.ElementTree as ET
+from lxml import etree
 import xml.sax.saxutils as saxutils
 
 main = Blueprint('main', __name__)
@@ -80,24 +80,16 @@ def punchout():
 
         # Parse the XML payload to extract return_url and buyer_cookie
         try:
-            namespace = {'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'}
-            tree = ET.ElementTree(ET.fromstring(incoming_data))
-            root = tree.getroot()
-            current_app.logger.info(f"Parsed XML: {ET.tostring(root, encoding='utf8').decode('utf8')}")
+            root = etree.fromstring(incoming_data.encode('utf-8'))
+            current_app.logger.info(f"Parsed XML: {etree.tostring(root, pretty_print=True).decode('utf-8')}")
 
-            browser_form_post = tree.find('.//cxml:BrowserFormPost', namespace)
-            if browser_form_post is not None:
-                return_url = browser_form_post.find('cxml:URL', namespace).text
-                current_app.logger.info(f"Found BrowserFormPost URL: {return_url}")
-            else:
-                current_app.logger.warning("BrowserFormPost element not found in the XML.")
+            return_url = root.xpath('//cxml:BrowserFormPost/cxml:URL/text()', namespaces={'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'})
+            return_url = return_url[0] if return_url else ''
+            current_app.logger.info(f"Found BrowserFormPost URL: {return_url}")
 
-            buyer_cookie_element = tree.find('.//cxml:BuyerCookie', namespace)
-            if buyer_cookie_element is not None:
-                buyer_cookie = buyer_cookie_element.text
-                current_app.logger.info(f"Found BuyerCookie: {buyer_cookie}")
-            else:
-                current_app.logger.warning("BuyerCookie element not found in the XML.")
+            buyer_cookie = root.xpath('//cxml:BuyerCookie/text()', namespaces={'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'})
+            buyer_cookie = buyer_cookie[0] if buyer_cookie else ''
+            current_app.logger.info(f"Found BuyerCookie: {buyer_cookie}")
         except Exception as e:
             current_app.logger.error(f"Error parsing XML: {e}")
             return_url = ''
