@@ -1,6 +1,7 @@
 from flask import Blueprint, request, render_template, redirect, url_for, current_app
 from lxml import etree
 import xml.sax.saxutils as saxutils
+from datetime import datetime
 
 main = Blueprint('main', __name__)
 
@@ -15,53 +16,44 @@ product = {
     "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
 }
 
-# cXML PunchOut Setup Response Template
-punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
-<cXML payloadID="{payload_id}" timestamp="{timestamp}">
-    <Response>
-        <Status code="200" text="OK">Success</Status>
-        <PunchOutSetupResponse>
-            <StartPage>
-                <URL>{start_page_url}</URL>
-            </StartPage>
-        </PunchOutSetupResponse>
-    </Response>
-</cXML>
-'''
+# Create cXML PunchOutOrderMessage
+def create_punchout_order_message(buyer_cookie, product):
+    punchout_order_message = etree.Element("PunchOutOrderMessage")
 
-# cXML Order Message Template
-order_message = '''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
-<cXML payloadID="2023-04-15T12:00:00-07:00" timestamp="2023-04-15T12:00:00-07:00">
-    <Message>
-        <PunchOutOrderMessage>
-            <BuyerCookie>{buyer_cookie}</BuyerCookie>
-            <PunchOutOrderMessageHeader operationAllowed="edit">
-                <Total>
-                    <Money currency="USD">{total_amount}</Money>
-                </Total>
-            </PunchOutOrderMessageHeader>
-            <ItemIn quantity="1">
-                <ItemID>
-                    <SupplierPartID>{product_id}</SupplierPartID>
-                    <BuyerPartID>{product_id}</BuyerPartID>
-                </ItemID>
-                <ItemDetail>
-                    <UnitPrice>
-                        <Money currency="USD">{unit_price}</Money>
-                    </UnitPrice>
-                    <Description xml:lang="en">{description}</Description>
-                    <UnitOfMeasure>EA</UnitOfMeasure>
-                    <Classification domain="UNSPSC">601210</Classification>
-                    <ManufacturerPartID>{product_id}</ManufacturerPartID>
-                    <ManufacturerName>Sample Manufacturer</ManufacturerName>
-                </ItemDetail>
-            </ItemIn>
-        </PunchOutOrderMessage>
-    </Message>
-</cXML>
-'''
+    # BuyerCookie
+    buyer_cookie_elem = etree.SubElement(punchout_order_message, "BuyerCookie")
+    buyer_cookie_elem.text = buyer_cookie
+
+    # PunchOutOrderMessageHeader
+    header = etree.SubElement(punchout_order_message, "PunchOutOrderMessageHeader", operationAllowed="edit")
+    total = etree.SubElement(header, "Total")
+    money = etree.SubElement(total, "Money", currency="USD")
+    money.text = product["price"]
+
+    # ItemIn
+    item_in = etree.SubElement(punchout_order_message, "ItemIn", quantity="1")
+    item_id = etree.SubElement(item_in, "ItemID")
+    supplier_part_id = etree.SubElement(item_id, "SupplierPartID")
+    supplier_part_id.text = product["id"]
+    buyer_part_id = etree.SubElement(item_id, "BuyerPartID")
+    buyer_part_id.text = product["id"]
+
+    item_detail = etree.SubElement(item_in, "ItemDetail")
+    unit_price = etree.SubElement(item_detail, "UnitPrice")
+    money = etree.SubElement(unit_price, "Money", currency="USD")
+    money.text = product["price"]
+    description = etree.SubElement(item_detail, "Description", {"xml:lang": "en"})
+    description.text = product["description"]
+    unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
+    unit_of_measure.text = "EA"
+    classification = etree.SubElement(item_detail, "Classification", domain="UNSPSC")
+    classification.text = "601210"
+    manufacturer_part_id = etree.SubElement(item_detail, "ManufacturerPartID")
+    manufacturer_part_id.text = product["id"]
+    manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
+    manufacturer_name.text = "Sample Manufacturer"
+
+    return punchout_order_message
 
 @main.route('/')
 def index():
@@ -72,14 +64,11 @@ def index():
 @main.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     if request.method == 'POST':
-        # Log the incoming request data for debugging
         incoming_data = request.data.decode('utf-8')
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
-        # Hardcoded buyer cookie
         buyer_cookie = "hardcoded-buyer-cookie-value"
 
-        # Parse the XML payload to extract return_url
         try:
             root = etree.fromstring(incoming_data.encode('utf-8'))
             current_app.logger.info(f"Parsed XML: {etree.tostring(root, pretty_print=True).decode('utf-8')}")
@@ -97,8 +86,17 @@ def punchout():
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
         start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
-        response_xml = punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
         
+        punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
+        response = etree.SubElement(punchout_setup_response, "Response")
+        status = etree.SubElement(response, "Status", code="200", text="OK")
+        status.text = "Success"
+        punchout_setup_response_elem = etree.SubElement(response, "PunchOutSetupResponse")
+        start_page = etree.SubElement(punchout_setup_response_elem, "StartPage")
+        url_elem = etree.SubElement(start_page, "URL")
+        url_elem.text = start_page_url
+
+        response_xml = etree.tostring(punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
         
         return response_xml
@@ -117,15 +115,15 @@ def checkout():
     buyer_cookie = request.args.get('buyer_cookie', 'hardcoded-buyer-cookie-value')
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
-    # Simulate returning order details to the procurement system
-    order_details = order_message.format(
-        buyer_cookie=saxutils.escape(buyer_cookie),
-        total_amount=saxutils.escape(product['price']),
-        product_id=saxutils.escape(product_id),
-        unit_price=saxutils.escape(product['price']),
-        description=saxutils.escape(product['description'])
-    )
+
+    order_message_elem = etree.Element("cXML", payloadID="2023-04-15T12:00:00-07:00", timestamp="2023-04-15T12:00:00-07:00")
+    message = etree.SubElement(order_message_elem, "Message")
+    punchout_order_message = create_punchout_order_message(buyer_cookie, product)
+    message.append(punchout_order_message)
+
+    order_details = etree.tostring(order_message_elem, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
     current_app.logger.info(f"Order Details: {order_details}")
+
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
