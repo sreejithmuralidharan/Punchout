@@ -1,5 +1,6 @@
 from flask import Blueprint, request, render_template, redirect, url_for, current_app
 import xml.etree.ElementTree as ET
+import xml.sax.saxutils as saxutils
 
 main = Blueprint('main', __name__)
 
@@ -99,8 +100,8 @@ def punchout():
         
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
-        start_page_url = url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True)
-        return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
+        start_page_url = url_for('main.catalog', return_url=saxutils.escape(return_url), buyer_cookie=saxutils.escape(buyer_cookie), _external=True)
+        return punchout_setup_response.format(payload_id=saxutils.escape(payload_id), timestamp=saxutils.escape(timestamp), start_page_url=start_page_url)
     return render_template('product_details.html', product=product, return_url=request.args.get('return_url', ''))
 
 @main.route('/catalog')
@@ -118,11 +119,11 @@ def checkout():
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
     order_details = order_message.format(
-        buyer_cookie=buyer_cookie,
-        total_amount=product['price'],
-        product_id=product_id,
-        unit_price=product['price'],
-        description=product['description']
+        buyer_cookie=saxutils.escape(buyer_cookie),
+        total_amount=saxutils.escape(product['price']),
+        product_id=saxutils.escape(product_id),
+        unit_price=saxutils.escape(product['price']),
+        description=saxutils.escape(product['description'])
     )
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
