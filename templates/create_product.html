@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Product</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mx-auto px-4">
+        <h1 class="text-2xl font-bold mt-4">Create Product</h1>
+        <form method="POST" action="{{ url_for('main.create_product') }}" class="mt-4">
+            <div class="mb-4">
+                <label for="id" class="block text-gray-700">Product ID:</label>
+                <input type="text" name="id" id="id" class="w-full border-gray-300 rounded mt-1">
+            </div>
+            <div class="mb-4">
+                <label for="name" class="block text-gray-700">Name:</label>
+                <input type="text" name="name" id="name" class="w-full border-gray-300 rounded mt-1">
+            </div>
+            <div class="mb-4">
+                <label for="description" class="block text-gray-700">Description:</label>
+                <textarea name="description" id="description" class="w-full border-gray-300 rounded mt-1"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="price" class="block text-gray-700">Price:</label>
+                <

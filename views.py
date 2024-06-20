@@ -117,11 +117,20 @@ def catalog():
     # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
 
-@main.route('/product', methods=['POST'])
+@main.route('/product', methods=['GET', 'POST'])
 def create_product():
-    product_data = request.json
-    products.append(product_data)
-    return jsonify({'status': 'Product created successfully'}), 201
+    if request.method == 'POST':
+        product_data = {
+            "id": request.form['id'],
+            "name": request.form['name'],
+            "description": request.form['description'],
+            "price": request.form['price'],
+            "image": request.form['image']
+        }
+        products.append(product_data)
+        return redirect(url_for('main.catalog'))
+
+    return render_template('create_product.html')
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
