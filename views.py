@@ -34,9 +34,6 @@ punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 order_message = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
 <cXML payloadID="2023-04-15T12:00:00-07:00" timestamp="2023-04-15T12:00:00-07:00">
-    <Response>
-        <Status code="200" text="OK">Success</Status>
-    </Response>
     <Message>
         <PunchOutOrderMessage>
             <BuyerCookie>{buyer_cookie}</BuyerCookie>
@@ -48,6 +45,7 @@ order_message = '''<?xml version="1.0" encoding="UTF-8"?>
             <ItemIn quantity="1">
                 <ItemID>
                     <SupplierPartID>{product_id}</SupplierPartID>
+                    <BuyerPartID>{product_id}</BuyerPartID>
                 </ItemID>
                 <ItemDetail>
                     <UnitPrice>
@@ -78,7 +76,10 @@ def punchout():
         incoming_data = request.data.decode('utf-8')
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
-        # Parse the XML payload to extract return_url and buyer_cookie
+        # Hardcoded buyer cookie
+        buyer_cookie = "hardcoded-buyer-cookie-value"
+
+        # Parse the XML payload to extract return_url
         try:
             root = etree.fromstring(incoming_data.encode('utf-8'))
             current_app.logger.info(f"Parsed XML: {etree.tostring(root, pretty_print=True).decode('utf-8')}")
@@ -86,14 +87,9 @@ def punchout():
             return_url = root.xpath('//cxml:BrowserFormPost/cxml:URL/text()', namespaces={'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'})
             return_url = return_url[0] if return_url else ''
             current_app.logger.info(f"Found BrowserFormPost URL: {return_url}")
-
-            buyer_cookie = root.xpath('//cxml:BuyerCookie/text()', namespaces={'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'})
-            buyer_cookie = buyer_cookie[0] if buyer_cookie else ''
-            current_app.logger.info(f"Found BuyerCookie: {buyer_cookie}")
         except Exception as e:
             current_app.logger.error(f"Error parsing XML: {e}")
             return_url = ''
-            buyer_cookie = ''
 
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
@@ -111,14 +107,14 @@ def punchout():
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
+    buyer_cookie = request.args.get('buyer_cookie', 'hardcoded-buyer-cookie-value')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     return render_template('catalog.html', product=product, return_url=return_url, buyer_cookie=buyer_cookie)
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
     return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
+    buyer_cookie = request.args.get('buyer_cookie', 'hardcoded-buyer-cookie-value')
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
