@@ -29,6 +29,41 @@ punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 </cXML>
 '''
 
+# cXML Order Message Template
+order_message = '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
+<cXML payloadID="2023-04-15T12:00:00-07:00" timestamp="2023-04-15T12:00:00-07:00">
+    <Response>
+        <Status code="200" text="OK">Success</Status>
+    </Response>
+    <Message>
+        <PunchOutOrderMessage>
+            <BuyerCookie>{buyer_cookie}</BuyerCookie>
+            <PunchOutOrderMessageHeader operationAllowed="edit">
+                <Total>
+                    <Money currency="USD">{total_amount}</Money>
+                </Total>
+            </PunchOutOrderMessageHeader>
+            <ItemIn quantity="1">
+                <ItemID>
+                    <SupplierPartID>{product_id}</SupplierPartID>
+                </ItemID>
+                <ItemDetail>
+                    <UnitPrice>
+                        <Money currency="USD">{unit_price}</Money>
+                    </UnitPrice>
+                    <Description xml:lang="en">{description}</Description>
+                    <UnitOfMeasure>EA</UnitOfMeasure>
+                    <Classification domain="UNSPSC">601210</Classification>
+                    <ManufacturerPartID>{product_id}</ManufacturerPartID>
+                    <ManufacturerName>Sample Manufacturer</ManufacturerName>
+                </ItemDetail>
+            </ItemIn>
+        </PunchOutOrderMessage>
+    </Message>
+</cXML>
+'''
+
 @main.route('/')
 def index():
     return_url = request.args.get('return_url', '')
@@ -39,48 +74,50 @@ def index():
 def punchout():
     if request.method == 'POST':
         # Log the incoming request data for debugging
-        current_app.logger.info(f"PunchOut - Incoming Data: {request.data.decode('utf-8')}")
-        
+        incoming_data = request.data.decode('utf-8')
+        current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
+
         # Parse the XML payload to extract return_url
-        tree = ET.fromstring(request.data)
-        browser_form_post = tree.find('.//{http://xml.cxml.org/schemas/cXML/1.1.008}BrowserFormPost')
-        return_url = browser_form_post.find('{http://xml.cxml.org/schemas/cXML/1.1.008}URL').text if browser_form_post is not None else ''
-        
+        try:
+            namespace = {'cxml': 'http://xml.cxml.org/schemas/cXML/1.1.008'}
+            tree = ET.ElementTree(ET.fromstring(incoming_data))
+            browser_form_post = tree.find('.//cxml:BrowserFormPost', namespace)
+            return_url = browser_form_post.find('cxml:URL', namespace).text if browser_form_post is not None else ''
+            buyer_cookie = tree.find('.//cxml:BuyerCookie', namespace).text
+        except Exception as e:
+            current_app.logger.error(f"Error parsing XML: {e}")
+            return_url = ''
+            buyer_cookie = ''
+
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
         
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
-        start_page_url = url_for('main.catalog', return_url=return_url, _external=True)
+        start_page_url = url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True)
         return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
     return render_template('product_details.html', product=product, return_url=request.args.get('return_url', ''))
 
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
-    current_app.logger.info(f"Catalog - Return URL: {return_url}")
-    return render_template('catalog.html', product=product, return_url=return_url)
+    buyer_cookie = request.args.get('buyer_cookie', '')
+    current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    return render_template('catalog.html', product=product, return_url=return_url, buyer_cookie=buyer_cookie)
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
     return_url = request.args.get('return_url', '')
-    current_app.logger.info(f"Checkout - Return URL: {return_url}")
+    buyer_cookie = request.args.get('buyer_cookie', '')
+    current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
-    order_details = f'''<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
-<cXML payloadID="2023-04-15T12:00:00-07:00" timestamp="2023-04-15T12:00:00-07:00">
-    <Response>
-        <Status code="200" text="OK">Success</Status>
-    </Response>
-    <OrderMessage>
-        <Item>
-            <ItemID>{product_id}</ItemID>
-            <Description>{product['description']}</Description>
-            <UnitPrice>{product['price']}</UnitPrice>
-        </Item>
-    </OrderMessage>
-</cXML>
-'''
+    order_details = order_message.format(
+        buyer_cookie=buyer_cookie,
+        total_amount=product['price'],
+        product_id=product_id,
+        unit_price=product['price'],
+        description=product['description']
+    )
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
