@@ -84,12 +84,20 @@ def punchout():
             tree = ET.ElementTree(ET.fromstring(incoming_data))
             root = tree.getroot()
             current_app.logger.info(f"Parsed XML: {ET.tostring(root, encoding='utf8').decode('utf8')}")
-            
+
             browser_form_post = tree.find('.//cxml:BrowserFormPost', namespace)
-            return_url = browser_form_post.find('cxml:URL', namespace).text if browser_form_post is not None else ''
-            
+            if browser_form_post is not None:
+                return_url = browser_form_post.find('cxml:URL', namespace).text
+                current_app.logger.info(f"Found BrowserFormPost URL: {return_url}")
+            else:
+                current_app.logger.warning("BrowserFormPost element not found in the XML.")
+
             buyer_cookie_element = tree.find('.//cxml:BuyerCookie', namespace)
-            buyer_cookie = buyer_cookie_element.text if buyer_cookie_element is not None else ''
+            if buyer_cookie_element is not None:
+                buyer_cookie = buyer_cookie_element.text
+                current_app.logger.info(f"Found BuyerCookie: {buyer_cookie}")
+            else:
+                current_app.logger.warning("BuyerCookie element not found in the XML.")
         except Exception as e:
             current_app.logger.error(f"Error parsing XML: {e}")
             return_url = ''
