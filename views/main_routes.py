@@ -20,7 +20,39 @@ def extract_value(xml_str, start_tag, end_tag):
 
 # Create cXML PunchOutOrderMessage
 def create_punchout_order_message(buyer_cookie, product):
-    cxml = etree.Element("cXML", payloadID="2023-04-15T12:00:00-07:00", timestamp="2023-04-15T12:00:00-07:00")
+    cxml = etree.Element(
+        "cXML", 
+        payloadID="1718898801551.591.1348@Sree.com",
+        timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    )
+
+    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
+    cxml.addprevious(etree.PI('xml', 'version="1.0" encoding="UTF-8"'))
+
+    header = etree.SubElement(cxml, "Header")
+    
+    from_cred = etree.SubElement(header, "From")
+    from_credential = etree.SubElement(from_cred, "Credential", domain="DUNS")
+    from_identity = etree.SubElement(from_credential, "Identity")
+    from_identity.text = "128990368"
+    from_credential2 = etree.SubElement(from_cred, "Credential", domain="NetworkId")
+    from_identity2 = etree.SubElement(from_credential2, "Identity")
+    from_identity2.text = "Sree"
+    
+    to_cred = etree.SubElement(header, "To")
+    to_credential = etree.SubElement(to_cred, "Credential", domain="NetworkId")
+    to_identity = etree.SubElement(to_credential, "Identity")
+    to_identity.text = "Ivalua"
+    
+    sender = etree.SubElement(header, "Sender")
+    sender_credential = etree.SubElement(sender, "Credential", domain="DUNS")
+    sender_identity = etree.SubElement(sender_credential, "Identity")
+    sender_identity.text = "128990368"
+    sender_credential2 = etree.SubElement(sender, "Credential", domain="NetworkId")
+    sender_identity2 = etree.SubElement(sender_credential2, "Identity")
+    sender_identity2.text = "Sree"
+    user_agent = etree.SubElement(sender, "UserAgent")
+    user_agent.text = "Sree LLC eProcurement Application"
 
     message = etree.SubElement(cxml, "Message")
     punchout_order_message = etree.SubElement(message, "PunchOutOrderMessage")
@@ -47,7 +79,7 @@ def create_punchout_order_message(buyer_cookie, product):
     unit_price = etree.SubElement(item_detail, "UnitPrice")
     money = etree.SubElement(unit_price, "Money", currency="USD")
     money.text = product["unit_price"]
-    description = etree.SubElement(item_detail, "Description", lang="en")
+    description = etree.SubElement(item_detail, "Description", attrib={"xml:lang": "en-US"})
     description.text = product["description"]
     unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
     unit_of_measure.text = product["unit_of_measure"]
@@ -80,7 +112,8 @@ def create_punchout_order_message(buyer_cookie, product):
     extrinsic_preference = etree.SubElement(item_detail, "Extrinsic", name="preference")
     extrinsic_preference.text = product["preference"]
 
-    return etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+    return f"{doc_type}\n{cxml_string}"
 
 @main.route('/')
 def index():
@@ -119,6 +152,7 @@ def punchout():
         
         return response_xml
     return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
+
 
 @main.route('/catalog')
 def catalog():
