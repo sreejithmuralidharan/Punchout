@@ -7,7 +7,9 @@ app = Flask(__name__)
 product = {
     "id": "P001",
     "name": "Sample Product",
-    "description": "This is a sample product. " * 25,  # Repeated to make it long
+    "description": ("Experience the best quality with our Sample Product. "
+                    "Crafted to perfection, this item is designed to meet your needs and "
+                    "exceed your expectations. Perfect for any occasion." * 5),
     "price": "100.00",
     "image": "https://blog.aditmicrosys.com/wp-content/uploads/2019/03/dummy-product.png"
 }
@@ -27,11 +29,9 @@ punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 </cXML>
 '''
 
-# Store the return URL globally
-return_url = ""
-
 @app.route('/')
 def index():
+    return_url = request.args.get('return_url', '')
     return render_template_string('''
     <!DOCTYPE html>
     <html lang="en">
@@ -44,23 +44,18 @@ def index():
     <body class="bg-gray-100 text-gray-800">
         <div class="container mx-auto p-4">
             <h1 class="text-2xl font-bold mb-4">Welcome to the PunchOut Catalog</h1>
-            <a href="/punchout" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
+            <a href="/punchout?return_url={{ return_url }}" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
         </div>
     </body>
     </html>
-    ''')
+    ''', return_url=return_url)
 
 @app.route('/punchout', methods=['GET', 'POST'])
 def punchout():
-    global return_url
     if request.method == 'POST':
-        return_url = request.form.get('return_url', '')
-        if not return_url:
-            return_url = request.args.get('return_url', '')
-
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
-        start_page_url = url_for('catalog', _external=True)
+        start_page_url = url_for('catalog', return_url=request.args.get('return_url', ''), _external=True)
         return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
     return render_template_string('''
     <!DOCTYPE html>
@@ -74,11 +69,11 @@ def punchout():
     <body class="bg-gray-100 text-gray-800">
         <div class="container mx-auto p-4">
             <div class="bg-white shadow-md rounded p-4">
-                <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-cover mb-4">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-contain mb-4">
                 <h1 class="text-2xl font-bold mb-2">{{ product.name }}</h1>
                 <p class="mb-2">{{ product.description }}</p>
                 <p class="text-lg font-semibold mb-4">Price: ${{ product.price }}</p>
-                <form method="post" action="/submit">
+                <form method="post" action="/submit?return_url={{ return_url }}">
                     <input type="hidden" name="product_id" value="{{ product.id }}">
                     <input type="submit" value="Add to Cart" class="bg-blue-500 text-white px-4 py-2 rounded">
                 </form>
@@ -86,7 +81,7 @@ def punchout():
         </div>
     </body>
     </html>
-    ''', product=product)
+    ''', product=product, return_url=request.args.get('return_url', ''))
 
 @app.route('/catalog')
 def catalog():
@@ -102,11 +97,11 @@ def catalog():
     <body class="bg-gray-100 text-gray-800">
         <div class="container mx-auto p-4">
             <div class="bg-white shadow-md rounded p-4">
-                <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-cover mb-4">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-contain mb-4">
                 <h1 class="text-2xl font-bold mb-2">{{ product.name }}</h1>
                 <p class="mb-2">{{ product.description }}</p>
                 <p class="text-lg font-semibold mb-4">Price: ${{ product.price }}</p>
-                <form method="post" action="/checkout">
+                <form method="post" action="/checkout?return_url={{ return_url }}">
                     <input type="hidden" name="product_id" value="{{ product.id }}">
                     <input type="submit" value="Checkout" class="bg-blue-500 text-white px-4 py-2 rounded">
                 </form>
@@ -114,11 +109,11 @@ def catalog():
         </div>
     </body>
     </html>
-    ''', product=product)
+    ''', product=product, return_url=request.args.get('return_url', ''))
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
-    global return_url
+    return_url = request.args.get('return_url', '')
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
     order_details = f'''<?xml version="1.0" encoding="UTF-8"?>
