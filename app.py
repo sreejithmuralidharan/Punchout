@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template_string, redirect, url_for
+import os
 
 app = Flask(__name__)
 
@@ -6,48 +7,22 @@ app = Flask(__name__)
 product = {
     "id": "P001",
     "name": "Sample Product",
-    "description": "What is Lorem Ipsum? Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum. Why do we use it?It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).",
+    "description": "This is a sample product.",
     "price": "100.00"
 }
 
-# cXML PunchOut Setup Request Template
-cxml_template = '''<?xml version="1.0" encoding="UTF-8"?>
+# cXML PunchOut Setup Response Template
+punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
-<cXML payloadID="2023-04-15T12:00:00-07:00" timestamp="2023-04-15T12:00:00-07:00">
-    <Header>
-        <From>
-            <Credential domain="flask-example-from-domain">
-                <Identity>flask-example-from</Identity>
-            </Credential>
-        </From>
-        <To>
-            <Credential domain="flask-example-to-domain">
-                <Identity>flask-example-to</Identity>
-            </Credential>
-        </To>
-        <Sender>
-            <Credential domain="flask-example-sender-domain">
-                <Identity>flask-example-sender</Identity>
-                <SharedSecret>flask-example-password</SharedSecret>
-            </Credential>
-            <UserAgent>Python cXML PunchOut Example</UserAgent>
-        </Sender>
-    </Header>
-    <Request>
-        <PunchOutSetupRequest operation="create">
-            <BuyerCookie>cookie-placeholder</BuyerCookie>
-            <BrowserFormPost>
-                <URL>http://localhost:5000/punchout</URL>
-            </BrowserFormPost>
-            <Contact role="endUser">
-                <Name xml:lang="en">John Doe</Name>
-                <Email>john.doe@example.com</Email>
-            </Contact>
-            <SupplierSetup>
-                <URL>http://localhost:5000/punchout</URL>
-            </SupplierSetup>
-        </PunchOutSetupRequest>
-    </Request>
+<cXML payloadID="{payload_id}" timestamp="{timestamp}">
+    <Response>
+        <Status code="200" text="OK">Success</Status>
+        <PunchOutSetupResponse>
+            <StartPage>
+                <URL>{start_page_url}</URL>
+            </StartPage>
+        </PunchOutSetupResponse>
+    </Response>
 </cXML>
 '''
 
@@ -61,21 +36,53 @@ def index():
 @app.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     if request.method == 'POST':
-        return cxml_template
+        payload_id = "2023-04-15T12:00:00-07:00"
+        timestamp = "2023-04-15T12:00:00-07:00"
+        start_page_url = url_for('catalog', _external=True)
+        return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
     return render_template_string('''
     <h1>{{ product.name }}</h1>
     <p>{{ product.description }}</p>
     <p>Price: ${{ product.price }}</p>
-    <form method="post" action="/submit">
+    <form method="post" action="/checkout">
         <input type="hidden" name="product_id" value="{{ product.id }}">
         <input type="submit" value="Add to Cart">
     </form>
     ''', product=product)
 
-@app.route('/submit', methods=['POST'])
-def submit():
+@app.route('/catalog')
+def catalog():
+    return render_template_string('''
+    <h1>{{ product.name }}</h1>
+    <p>{{ product.description }}</p>
+    <p>Price: ${{ product.price }}</p>
+    <form method="post" action="/checkout">
+        <input type="hidden" name="product_id" value="{{ product.id }}">
+        <input type="submit" value="Checkout">
+    </form>
+    ''', product=product)
+
+@app.route('/checkout', methods=['POST'])
+def checkout():
     product_id = request.form.get('product_id')
-    return f'<h1>Product {product_id} added to cart</h1>'
+    # Simulate returning order details to the procurement system
+    order_details = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.014/cXML.dtd">
+<cXML payloadID="2023-04-15T12:00:00-07:00" timestamp="2023-04-15T12:00:00-07:00">
+    <Response>
+        <Status code="200" text="OK">Success</Status>
+    </Response>
+    <OrderMessage>
+        <Item>
+            <ItemID>{product_id}</ItemID>
+            <Description>{product['description']}</Description>
+            <UnitPrice>{product['price']}</UnitPrice>
+        </Item>
+    </OrderMessage>
+</cXML>
+'''
+    return order_details
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
