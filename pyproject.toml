@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "cxml-punchout"
+version = "0.1.0"
+description = "A simple cXML PunchOut example using Flask"
+authors = ["Sreejith Muralidharan <sreejith.muralidharan@ojc-consulting.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+Flask = "^2.0.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
