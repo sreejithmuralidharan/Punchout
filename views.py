@@ -1,16 +1,22 @@
 from flask import Blueprint, request, render_template, redirect, url_for, current_app, jsonify
 from lxml import etree
 import xml.sax.saxutils as saxutils
-from pymongo import MongoClient
 from datetime import datetime
 
 main = Blueprint('main', __name__)
 
-# MongoDB client setup
-client = MongoClient("mongodb+srv://sreeojcconsulting:QGkO89qCZ8jNqNZA@punchouttester.zwv1kcs.mongodb.net/?retryWrites=true&w=majority&appName=PunchoutTester")
-db = client.PunchoutTester
-products_collection = db.products
-cart_collection = db.cart
+# Mock product data
+products = [
+    {
+        "id": "P001",
+        "name": "Sample Product",
+        "description": ("Experience the best quality with our Sample Product. "
+                        "Crafted to perfection, this item is designed to meet your needs and "
+                        "exceed your expectations. Perfect for any occasion." * 5),
+        "price": "100.00",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff"
+    }
+]
 
 # Function to extract values between specific tags
 def extract_value(xml_str, start_tag, end_tag):
@@ -24,7 +30,10 @@ def extract_value(xml_str, start_tag, end_tag):
 
 # Create cXML PunchOutOrderMessage
 def create_punchout_order_message(buyer_cookie, product):
-    punchout_order_message = etree.Element("PunchOutOrderMessage")
+    cxml = etree.Element("cXML", payloadID="2023-04-15T12:00:00-07:00", timestamp="2023-04-15T12:00:00-07:00")
+
+    message = etree.SubElement(cxml, "Message")
+    punchout_order_message = etree.SubElement(message, "PunchOutOrderMessage")
 
     # BuyerCookie
     buyer_cookie_elem = etree.SubElement(punchout_order_message, "BuyerCookie")
@@ -59,7 +68,7 @@ def create_punchout_order_message(buyer_cookie, product):
     manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
     manufacturer_name.text = "Sample Manufacturer"
 
-    return punchout_order_message
+    return etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
 
 @main.route('/')
 def index():
@@ -97,7 +106,7 @@ def punchout():
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
         
         return response_xml
-    return render_template('product_details.html', product=product, return_url=request.args.get('return_url', ''))
+    return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
 @main.route('/catalog')
 def catalog():
@@ -105,14 +114,13 @@ def catalog():
     buyer_cookie = request.args.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
-    # Retrieve product list from MongoDB
-    products = list(products_collection.find())
+    # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
 
 @main.route('/product', methods=['POST'])
 def create_product():
     product_data = request.json
-    products_collection.insert_one(product_data)
+    products.append(product_data)
     return jsonify({'status': 'Product created successfully'}), 201
 
 @main.route('/checkout', methods=['POST'])
@@ -122,27 +130,14 @@ def checkout():
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
 
-    # Retrieve product from MongoDB
-    product = products_collection.find_one({'id': product_id})
+    # Retrieve product from in-memory storage
+    product = next((p for p in products if p['id'] == product_id), None)
 
     if not product:
         return jsonify({'error': 'Product not found'}), 404
 
-    # Add to cart in MongoDB
-    cart_collection.insert_one({
-        'buyer_cookie': buyer_cookie,
-        'product_id': product['id'],
-        'quantity': 1,
-        'price': product['price'],
-        'timestamp': datetime.now()
-    })
-
-    order_message_elem = etree.Element("cXML", payloadID="2023-04-15T12:00:00-07:00", timestamp="2023-04-15T12:00:00-07:00")
-    message = etree.SubElement(order_message_elem, "Message")
-    punchout_order_message = create_punchout_order_message(buyer_cookie, product)
-    message.append(punchout_order_message)
-
-    order_details = etree.tostring(order_message_elem, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+    # Log the order details for debugging purposes
+    order_details = create_punchout_order_message(buyer_cookie, product)
     current_app.logger.info(f"Order Details: {order_details}")
 
     if return_url:
