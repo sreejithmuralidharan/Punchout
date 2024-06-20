@@ -40,7 +40,11 @@ def index():
 def punchout():
     global return_url
     if request.method == 'POST':
-        return_url = request.form.get('return_url')
+        # Assuming return_url is part of the request form
+        return_url = request.form.get('return_url', '')
+        if not return_url:
+            return_url = request.args.get('return_url', '')
+
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
         start_page_url = url_for('catalog', _external=True)
@@ -49,7 +53,7 @@ def punchout():
     <h1>{{ product.name }}</h1>
     <p>{{ product.description }}</p>
     <p>Price: ${{ product.price }}</p>
-    <form method="post" action="/submit">
+    <form method="post" action="/checkout">
         <input type="hidden" name="product_id" value="{{ product.id }}">
         <input type="submit" value="Add to Cart">
     </form>
@@ -69,6 +73,7 @@ def catalog():
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
+    global return_url
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
     order_details = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -86,7 +91,9 @@ def checkout():
     </OrderMessage>
 </cXML>
 '''
-    return redirect(return_url)
+    if return_url:
+        return redirect(return_url)
+    return order_details
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
