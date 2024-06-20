@@ -1,6 +1,5 @@
-from flask import Blueprint, request, render_template, redirect, url_for
+from flask import Blueprint, request, render_template, redirect, url_for, current_app
 import xml.etree.ElementTree as ET
-import logging
 
 main = Blueprint('main', __name__)
 
@@ -33,18 +32,21 @@ punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 @main.route('/')
 def index():
     return_url = request.args.get('return_url', '')
-    logging.info(f"Index - Return URL: {return_url}")
+    current_app.logger.info(f"Index - Return URL: {return_url}")
     return render_template('index.html', return_url=return_url)
 
 @main.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     if request.method == 'POST':
+        # Log the incoming request data for debugging
+        current_app.logger.info(f"PunchOut - Incoming Data: {request.data.decode('utf-8')}")
+        
         # Parse the XML payload to extract return_url
         tree = ET.fromstring(request.data)
         browser_form_post = tree.find('.//{http://xml.cxml.org/schemas/cXML/1.1.008}BrowserFormPost')
         return_url = browser_form_post.find('{http://xml.cxml.org/schemas/cXML/1.1.008}URL').text if browser_form_post is not None else ''
         
-        logging.info(f"PunchOut - Return URL: {return_url}")
+        current_app.logger.info(f"PunchOut - Return URL: {return_url}")
         
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
@@ -55,13 +57,13 @@ def punchout():
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
-    logging.info(f"Catalog - Return URL: {return_url}")
+    current_app.logger.info(f"Catalog - Return URL: {return_url}")
     return render_template('catalog.html', product=product, return_url=return_url)
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
     return_url = request.args.get('return_url', '')
-    logging.info(f"Checkout - Return URL: {return_url}")
+    current_app.logger.info(f"Checkout - Return URL: {return_url}")
     product_id = request.form.get('product_id')
     # Simulate returning order details to the procurement system
     order_details = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -80,6 +82,6 @@ def checkout():
 </cXML>
 '''
     if return_url:
-        logging.info(f"Redirecting to: {return_url}")
+        current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
     return order_details
