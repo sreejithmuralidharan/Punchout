@@ -7,8 +7,9 @@ app = Flask(__name__)
 product = {
     "id": "P001",
     "name": "Sample Product",
-    "description": "This is a sample product.",
-    "price": "100.00"
+    "description": "This is a sample product. " * 25,  # Repeated to make it long
+    "price": "100.00",
+    "image": "https://blog.aditmicrosys.com/wp-content/uploads/2019/03/dummy-product.png"
 }
 
 # cXML PunchOut Setup Response Template
@@ -32,15 +33,27 @@ return_url = ""
 @app.route('/')
 def index():
     return render_template_string('''
-    <h1>Welcome to the PunchOut Catalog</h1>
-    <a href="/punchout">PunchOut to Catalog</a>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.2/dist/tailwind.min.css" rel="stylesheet">
+        <title>PunchOut Catalog</title>
+    </head>
+    <body class="bg-gray-100 text-gray-800">
+        <div class="container mx-auto p-4">
+            <h1 class="text-2xl font-bold mb-4">Welcome to the PunchOut Catalog</h1>
+            <a href="/punchout" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
+        </div>
+    </body>
+    </html>
     ''')
 
 @app.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     global return_url
     if request.method == 'POST':
-        # Assuming return_url is part of the request form
         return_url = request.form.get('return_url', '')
         if not return_url:
             return_url = request.args.get('return_url', '')
@@ -50,25 +63,57 @@ def punchout():
         start_page_url = url_for('catalog', _external=True)
         return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
     return render_template_string('''
-    <h1>{{ product.name }}</h1>
-    <p>{{ product.description }}</p>
-    <p>Price: ${{ product.price }}</p>
-    <form method="post" action="/checkout">
-        <input type="hidden" name="product_id" value="{{ product.id }}">
-        <input type="submit" value="Add to Cart">
-    </form>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.2/dist/tailwind.min.css" rel="stylesheet">
+        <title>Product Details</title>
+    </head>
+    <body class="bg-gray-100 text-gray-800">
+        <div class="container mx-auto p-4">
+            <div class="bg-white shadow-md rounded p-4">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-cover mb-4">
+                <h1 class="text-2xl font-bold mb-2">{{ product.name }}</h1>
+                <p class="mb-2">{{ product.description }}</p>
+                <p class="text-lg font-semibold mb-4">Price: ${{ product.price }}</p>
+                <form method="post" action="/submit">
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+                    <input type="submit" value="Add to Cart" class="bg-blue-500 text-white px-4 py-2 rounded">
+                </form>
+            </div>
+        </div>
+    </body>
+    </html>
     ''', product=product)
 
 @app.route('/catalog')
 def catalog():
     return render_template_string('''
-    <h1>{{ product.name }}</h1>
-    <p>{{ product.description }}</p>
-    <p>Price: ${{ product.price }}</p>
-    <form method="post" action="/checkout">
-        <input type="hidden" name="product_id" value="{{ product.id }}">
-        <input type="submit" value="Checkout">
-    </form>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.2/dist/tailwind.min.css" rel="stylesheet">
+        <title>Product Catalog</title>
+    </head>
+    <body class="bg-gray-100 text-gray-800">
+        <div class="container mx-auto p-4">
+            <div class="bg-white shadow-md rounded p-4">
+                <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-cover mb-4">
+                <h1 class="text-2xl font-bold mb-2">{{ product.name }}</h1>
+                <p class="mb-2">{{ product.description }}</p>
+                <p class="text-lg font-semibold mb-4">Price: ${{ product.price }}</p>
+                <form method="post" action="/checkout">
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+                    <input type="submit" value="Checkout" class="bg-blue-500 text-white px-4 py-2 rounded">
+                </form>
+            </div>
+        </div>
+    </body>
+    </html>
     ''', product=product)
 
 @app.route('/checkout', methods=['POST'])
