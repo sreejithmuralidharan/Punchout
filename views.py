@@ -98,10 +98,14 @@ def punchout():
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         
-        payload_id = "2023-04-15T12:00:00-07:00"
-        timestamp = "2023-04-15T12:00:00-07:00"
-        start_page_url = url_for('main.catalog', return_url=saxutils.escape(return_url), buyer_cookie=saxutils.escape(buyer_cookie), _external=True)
-        return punchout_setup_response.format(payload_id=saxutils.escape(payload_id), timestamp=saxutils.escape(timestamp), start_page_url=start_page_url)
+        payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
+        timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
+        start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
+        response_xml = punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
+        
+        current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
+        
+        return response_xml
     return render_template('product_details.html', product=product, return_url=request.args.get('return_url', ''))
 
 @main.route('/catalog')
@@ -125,6 +129,7 @@ def checkout():
         unit_price=saxutils.escape(product['price']),
         description=saxutils.escape(product['description'])
     )
+    current_app.logger.info(f"Order Details: {order_details}")
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
