@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template_string, redirect, url_for
 import os
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 
@@ -11,7 +12,7 @@ product = {
                     "Crafted to perfection, this item is designed to meet your needs and "
                     "exceed your expectations. Perfect for any occasion." * 5),
     "price": "100.00",
-    "image": "https://blog.aditmicrosys.com/wp-content/uploads/2019/03/dummy-product.png"
+    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30"
 }
 
 # cXML PunchOut Setup Response Template
@@ -31,7 +32,6 @@ punchout_setup_response = '''<?xml version="1.0" encoding="UTF-8"?>
 
 @app.route('/')
 def index():
-    return_url = request.args.get('return_url', '')
     return render_template_string('''
     <!DOCTYPE html>
     <html lang="en">
@@ -42,20 +42,30 @@ def index():
         <title>PunchOut Catalog</title>
     </head>
     <body class="bg-gray-100 text-gray-800">
+        <nav class="bg-blue-500 p-4">
+            <div class="container mx-auto">
+                <a href="/" class="text-white text-xl font-bold">Sree's Punchout Tester</a>
+            </div>
+        </nav>
         <div class="container mx-auto p-4">
             <h1 class="text-2xl font-bold mb-4">Welcome to the PunchOut Catalog</h1>
-            <a href="/punchout?return_url={{ return_url }}" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
+            <a href="/punchout" class="bg-blue-500 text-white px-4 py-2 rounded">PunchOut to Catalog</a>
         </div>
     </body>
     </html>
-    ''', return_url=return_url)
+    ''')
 
 @app.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     if request.method == 'POST':
+        # Parse the XML payload to extract return_url
+        tree = ET.fromstring(request.data)
+        browser_form_post = tree.find('.//{http://www.cxml.org/schemas/cXML/1.2.014}BrowserFormPost')
+        return_url = browser_form_post.find('{http://www.cxml.org/schemas/cXML/1.2.014}URL').text if browser_form_post is not None else ''
+        
         payload_id = "2023-04-15T12:00:00-07:00"
         timestamp = "2023-04-15T12:00:00-07:00"
-        start_page_url = url_for('catalog', return_url=request.args.get('return_url', ''), _external=True)
+        start_page_url = url_for('catalog', return_url=return_url, _external=True)
         return punchout_setup_response.format(payload_id=payload_id, timestamp=timestamp, start_page_url=start_page_url)
     return render_template_string('''
     <!DOCTYPE html>
@@ -67,6 +77,11 @@ def punchout():
         <title>Product Details</title>
     </head>
     <body class="bg-gray-100 text-gray-800">
+        <nav class="bg-blue-500 p-4">
+            <div class="container mx-auto">
+                <a href="/" class="text-white text-xl font-bold">Sree's Punchout Tester</a>
+            </div>
+        </nav>
         <div class="container mx-auto p-4">
             <div class="bg-white shadow-md rounded p-4">
                 <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-contain mb-4">
@@ -95,6 +110,11 @@ def catalog():
         <title>Product Catalog</title>
     </head>
     <body class="bg-gray-100 text-gray-800">
+        <nav class="bg-blue-500 p-4">
+            <div class="container mx-auto">
+                <a href="/" class="text-white text-xl font-bold">Sree's Punchout Tester</a>
+            </div>
+        </nav>
         <div class="container mx-auto p-4">
             <div class="bg-white shadow-md rounded p-4">
                 <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-contain mb-4">
