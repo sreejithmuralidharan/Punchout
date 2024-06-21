@@ -9,16 +9,19 @@ from .punchout_message import create_punchout_order_message
 # Load products from JSON file
 products = load_products('products.json')
 
-# Function to extract values between specific tags
+
 def extract_value(xml_str, start_tag, end_tag):
     """Extract the value between start_tag and end_tag in xml_str."""
     try:
         start_index = xml_str.index(start_tag) + len(start_tag)
         end_index = xml_str.index(end_tag, start_index)
-        return xml_str[start_index:end_index].strip()
+        extracted_value = xml_str[start_index:end_index].strip()
+        current_app.logger.info(
+            f"Extracted value for {start_tag}: {extracted_value}")
+        return extracted_value
     except ValueError:
+        current_app.logger.error(f"Failed to extract value for {start_tag}")
         return None
-
 
 
 @main.route('/')
@@ -27,6 +30,7 @@ def index():
     current_app.logger.info(f"Index - Return URL: {return_url}")
     return render_template('index.html', return_url=return_url)
 
+
 @main.route('/punchout', methods=['GET', 'POST'])
 def punchout():
     if request.method == 'POST':
@@ -34,28 +38,35 @@ def punchout():
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
         # Extract BuyerCookie and BrowserFormPost URL using string functions
-        buyer_cookie = extract_value(incoming_data, '<BuyerCookie>', '</BuyerCookie>')
-        return_url = extract_value(incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
-        
+        buyer_cookie = extract_value(
+            incoming_data, '<BuyerCookie>', '</BuyerCookie>')
+        return_url = extract_value(
+            incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
+
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
-        start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
-        
-        punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
+        start_page_url = saxutils.escape(url_for(
+            'main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
+
+        punchout_setup_response = etree.Element(
+            "cXML", payloadID=payload_id, timestamp=timestamp)
         response = etree.SubElement(punchout_setup_response, "Response")
         status = etree.SubElement(response, "Status", code="200", text="OK")
         status.text = "Success"
-        punchout_setup_response_elem = etree.SubElement(response, "PunchOutSetupResponse")
-        start_page = etree.SubElement(punchout_setup_response_elem, "StartPage")
+        punchout_setup_response_elem = etree.SubElement(
+            response, "PunchOutSetupResponse")
+        start_page = etree.SubElement(
+            punchout_setup_response_elem, "StartPage")
         url_elem = etree.SubElement(start_page, "URL")
         url_elem.text = start_page_url
 
-        response_xml = etree.tostring(punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+        response_xml = etree.tostring(
+            punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
-        
+
         return response_xml
     return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
@@ -64,10 +75,12 @@ def punchout():
 def catalog():
     return_url = request.args.get('return_url', '')
     buyer_cookie = request.args.get('buyer_cookie', '')
-    current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    current_app.logger.info(
+        f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
+
 
 @main.route('/product', methods=['GET', 'POST'])
 def create_product():
@@ -104,7 +117,8 @@ def create_product():
 def checkout():
     return_url = request.args.get('return_url', '')
     buyer_cookie = request.args.get('buyer_cookie', '')
-    current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    current_app.logger.info(
+        f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
 
     # Retrieve product from in-memory storage
