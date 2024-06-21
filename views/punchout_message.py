@@ -2,16 +2,13 @@ import lxml.etree as etree
 from datetime import datetime
 
 def create_punchout_order_message(buyer_cookie, cart):
-    # Define the DOCTYPE
-    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
-
     # Create the XML root element
     cxml = etree.Element(
-        "cXML",
+        "cXML", 
         payloadID="1718898801551.591.1348@sreejith.co.uk",
         timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     )
-
+    
     # Create the Header section
     header = etree.SubElement(cxml, "Header")
     
@@ -50,57 +47,56 @@ def create_punchout_order_message(buyer_cookie, cart):
     header = etree.SubElement(punchout_order_message, "PunchOutOrderMessageHeader", operationAllowed="create")
     total = etree.SubElement(header, "Total")
     money = etree.SubElement(total, "Money", currency="USD")
-    money.text = str(sum(float(item["price"]) for item in cart))
+    money.text = str(sum(float(item["price"]) for item in cart if isinstance(item, dict) and "price" in item))
     
     for product in cart:
-        # ItemIn
-        item_in = etree.SubElement(punchout_order_message, "ItemIn", quantity="1")
-        item_id = etree.SubElement(item_in, "ItemID")
-        supplier_part_id = etree.SubElement(item_id, "SupplierPartID")
-        supplier_part_id.text = product["id"]
-        supplier_part_aux_id = etree.SubElement(item_id, "SupplierPartAuxiliaryID")
-        supplier_part_aux_id.text = "140-1163021-7594456,1"
-        
-        item_detail = etree.SubElement(item_in, "ItemDetail")
-        unit_price = etree.SubElement(item_detail, "UnitPrice")
-        money = etree.SubElement(unit_price, "Money", currency="USD")
-        money.text = product["unit_price"]
-        
-        # Correctly setting the xml:lang attribute
-        description = etree.SubElement(item_detail, "Description", attrib={"xml:lang": "en-US"})
-        description.text = product["description"]
-        
-        unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
-        unit_of_measure.text = product["unit_of_measure"]
-        classification = etree.SubElement(item_detail, "Classification", domain="UNSPSC")
-        classification.text = product["classification"]
-        manufacturer_part_id = etree.SubElement(item_detail, "ManufacturerPartID")
-        manufacturer_part_id.text = product["manufacturer_part_id"]
-        manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
-        manufacturer_name.text = product["manufacturer_name"]
-        
-        # Extrinsic fields
-        extrinsic_sold_by = etree.SubElement(item_detail, "Extrinsic", name="soldBy")
-        extrinsic_sold_by.text = product["sold_by"]
-        extrinsic_fulfilled_by = etree.SubElement(item_detail, "Extrinsic", name="fulfilledBy")
-        extrinsic_fulfilled_by.text = product["fulfilled_by"]
-        extrinsic_category = etree.SubElement(item_detail, "Extrinsic", name="category")
-        extrinsic_category.text = product["category"]
-        extrinsic_sub_category = etree.SubElement(item_detail, "Extrinsic", name="subCategory")
-        extrinsic_sub_category.text = product["sub_category"]
-        extrinsic_item_condition = etree.SubElement(item_detail, "Extrinsic", name="itemCondition")
-        extrinsic_item_condition.text = product["item_condition"]
-        extrinsic_qualified_offer = etree.SubElement(item_detail, "Extrinsic", name="qualifiedOffer")
-        extrinsic_qualified_offer.text = product["qualified_offer"]
-        extrinsic_upc = etree.SubElement(item_detail, "Extrinsic", name="UPC")
-        extrinsic_upc.text = product["upc"]
-        extrinsic_detail_page_url = etree.SubElement(item_detail, "Extrinsic", name="detailPageURL")
-        extrinsic_detail_page_url.text = product["detail_page_url"]
-        extrinsic_ean = etree.SubElement(item_detail, "Extrinsic", name="ean")
-        extrinsic_ean.text = product["ean"]
-        extrinsic_preference = etree.SubElement(item_detail, "Extrinsic", name="preference")
-        extrinsic_preference.text = product["preference"]
-
+        if isinstance(product, dict):  # Ensure product is a dictionary
+            # ItemIn
+            item_in = etree.SubElement(punchout_order_message, "ItemIn", quantity="1")
+            item_id = etree.SubElement(item_in, "ItemID")
+            supplier_part_id = etree.SubElement(item_id, "SupplierPartID")
+            supplier_part_id.text = product.get("id", "")
+            supplier_part_aux_id = etree.SubElement(item_id, "SupplierPartAuxiliaryID")
+            supplier_part_aux_id.text = "140-1163021-7594456,1"
+            
+            item_detail = etree.SubElement(item_in, "ItemDetail")
+            unit_price = etree.SubElement(item_detail, "UnitPrice")
+            money = etree.SubElement(unit_price, "Money", currency="USD")
+            money.text = product.get("unit_price", "0")
+            
+            description = etree.SubElement(item_detail, "Description", nsmap={"xml": "http://www.w3.org/XML/1998/namespace"})
+            description.attrib["{http://www.w3.org/XML/1998/namespace}lang"] = "en-US"
+            description.text = product.get("description", "")
+            
+            unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
+            unit_of_measure.text = product.get("unit_of_measure", "")
+            classification = etree.SubElement(item_detail, "Classification", domain="UNSPSC")
+            classification.text = product.get("classification", "")
+            manufacturer_part_id = etree.SubElement(item_detail, "ManufacturerPartID")
+            manufacturer_part_id.text = product.get("manufacturer_part_id", "")
+            manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
+            manufacturer_name.text = product.get("manufacturer_name", "")
+            
+            # Extrinsic fields
+            extrinsic_fields = {
+                "soldBy": product.get("sold_by", ""),
+                "fulfilledBy": product.get("fulfilled_by", ""),
+                "category": product.get("category", ""),
+                "subCategory": product.get("sub_category", ""),
+                "itemCondition": product.get("item_condition", ""),
+                "qualifiedOffer": product.get("qualified_offer", ""),
+                "UPC": product.get("upc", ""),
+                "detailPageURL": product.get("detail_page_url", ""),
+                "ean": product.get("ean", ""),
+                "preference": product.get("preference", "")
+            }
+            for name, value in extrinsic_fields.items():
+                extrinsic = etree.SubElement(item_detail, "Extrinsic", name=name)
+                extrinsic.text = value
+    
     # Convert the XML tree to a string
-    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
-    return f"<?xml version='1.0' encoding='UTF-8'?>\n{doc_type}\n{cxml_string}"
+    xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>'
+    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
+    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=False, encoding="UTF-8").decode()
+    
+    return f"{xml_declaration}\n{doc_type}\n{cxml_string}"

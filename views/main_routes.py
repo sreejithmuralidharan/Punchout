@@ -114,7 +114,7 @@ def checkout():
         return jsonify({'error': 'Product not found'}), 404
 
     # Log the order details for debugging purposes
-    order_details = create_punchout_order_message(buyer_cookie, product)
+    order_details = create_punchout_order_message(buyer_cookie, [product])
     current_app.logger.info(f"Order Details: {order_details}")
 
     if return_url:
