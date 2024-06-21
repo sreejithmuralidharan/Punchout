@@ -1,5 +1,5 @@
 import os
-from flask import request, render_template, redirect, url_for, current_app, jsonify, send_file
+from flask import request, render_template, redirect, url_for, current_app, jsonify, send_file, session, Response
 from lxml import etree
 import xml.sax.saxutils as saxutils
 from datetime import datetime
@@ -97,32 +97,48 @@ def create_product():
 
     return render_template('create_product.html')
 
-@main.route('/checkout', methods=['POST'])
-def checkout():
-    return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
-    current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+@main.route('/add_to_cart', methods=['POST'])
+def add_to_cart():
     product_id = request.form.get('product_id')
-
-    # Retrieve product from in-memory storage
     product = next((p for p in products if p['id'] == product_id), None)
 
     if not product:
         return jsonify({'error': 'Product not found'}), 404
 
+    cart = session.get('cart', [])
+    cart.append(product)
+    session['cart'] = cart
+
+    return redirect(url_for('main.catalog', return_url=request.form.get('return_url', ''), buyer_cookie=request.form.get('buyer_cookie', '')))
+
+@main.route('/cart')
+def cart():
+    cart = session.get('cart', [])
+    return_url = request.args.get('return_url', '')
+    buyer_cookie = request.args.get('buyer_cookie', '')
+    return render_template('cart.html', cart=cart, return_url=return_url, buyer_cookie=buyer_cookie)
+
+@main.route('/checkout', methods=['POST'])
+def checkout():
+    return_url = request.args.get('return_url', '')
+    buyer_cookie = request.args.get('buyer_cookie', '')
+    current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    cart = session.get('cart', [])
+
+    if not cart:
+        return jsonify({'error': 'Cart is empty'}), 404
+
     # Log the order details for debugging purposes
-    order_details = create_punchout_order_message(buyer_cookie, product)
+    order_details = create_punchout_order_message(buyer_cookie, cart)
     current_app.logger.info(f"Order Details: {order_details}")
 
-    # Save the XML to a file
-    xml_file_path = os.path.join(os.getcwd(), 'order_details.xml')
-    with open(xml_file_path, 'w') as file:
-        file.write(order_details)
+    # Send the XML as a downloadable response
+    return Response(order_details, mimetype='application/xml', headers={'Content-Disposition': 'attachment; filename=order_details.xml'})
 
-    # Send the file as a downloadable response
-    return send_file(xml_file_path, as_attachment=True, download_name='order_details.xml')
-
+@main.route('/proceed_checkout', methods=['POST'])
+def proceed_checkout():
+    return_url = request.args.get('return_url', '')
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
-    return order_details
+    return jsonify({'message': 'Proceed to checkout successful'}), 200

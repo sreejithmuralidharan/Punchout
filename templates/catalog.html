@@ -10,7 +10,7 @@
         <h2 class="text-lg font-bold">{{ product.name }}</h2>
         <p class="text-gray-600">{{ product.description }}</p>
         <p class="text-gray-800 font-semibold">${{ product.price }}</p>
-        <form method="post" action="/checkout" onsubmit="downloadFile(event, '{{ product.id }}')">
+        <form method="post" action="{{ url_for('main.add_to_cart') }}">
             <input type="hidden" name="product_id" value="{{ product.id }}">
             <input type="hidden" name="return_url" value="{{ return_url }}">
             <input type="hidden" name="buyer_cookie" value="{{ buyer_cookie }}">
@@ -19,36 +19,4 @@
     </div>
     {% endfor %}
 </div>
-
-<script>
-function downloadFile(event, productId) {
-    event.preventDefault();
-    const form = event.target;
-    const data = new FormData(form);
-    const returnUrl = data.get('return_url');
-    const buyerCookie = data.get('buyer_cookie');
-
-    fetch(`/checkout?return_url=${encodeURIComponent(returnUrl)}&buyer_cookie=${encodeURIComponent(buyerCookie)}`, {
-        method: 'POST',
-        body: data
-    })
-    .then(response => response.blob())
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'order_details.xml';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-
-        // Continue to the next step after download
-        if (returnUrl) {
-            window.location.href = returnUrl;
-        }
-    })
-    .catch(error => console.error('Error:', error));
-}
-</script>
 {% endblock %}
