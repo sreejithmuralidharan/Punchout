@@ -37,6 +37,7 @@ def punchout():
 
         session['return_url'] = return_url
         session['buyer_cookie'] = buyer_cookie
+        session['cart'] = []  # Clear the cart on new punchout request
         
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
