@@ -68,16 +68,12 @@ def punchout():
 
         return response_xml
 
-    return render_template('product_details.html', product=products[0], return_url=session.get('return_url', ''))
+    return render_template('product_details.html', product=products[0], return_url=return_url, buyer_cookie=buyer_cookie)
 
 @main.route('/catalog')
 def catalog():
-    print('Getting session cookie')
-    print(session.get('return_url', ''))
-    print(session.get('buyer_cookie', ''))
-
-    return_url = session.get('return_url', '')
-    buyer_cookie = session.get('buyer_cookie', '')
+    buyer_cookie = request.form.get('buyer_cookie')
+    return_url = request.form.get('return_url')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     # Retrieve product list from in-memory storage
