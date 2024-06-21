@@ -1,4 +1,4 @@
-from flask import request, render_template, redirect, url_for, current_app, jsonify, session
+from flask import request, render_template, redirect, url_for, current_app, session
 from lxml import etree
 import xml.sax.saxutils as saxutils
 from datetime import datetime
@@ -21,7 +21,7 @@ def extract_value(xml_str, start_tag, end_tag):
 
 @main.route('/')
 def index():
-    return_url = request.args.get('return_url', '')
+    return_url = session.get('return_url', '')
     current_app.logger.info(f"Index - Return URL: {return_url}")
     return render_template('index.html', return_url=return_url)
 
@@ -42,7 +42,7 @@ def punchout():
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
-        start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
+        start_page_url = saxutils.escape(url_for('main.catalog', _external=True))
 
         punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
         response = etree.SubElement(punchout_setup_response, "Response")
@@ -56,22 +56,18 @@ def punchout():
         response_xml = etree.tostring(punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
 
-        # Store session in MongoDB
-        session_doc = {
-            'buyer_cookie': buyer_cookie,
-            'return_url': return_url,
-            'timestamp': datetime.utcnow()
-        }
-        current_app.db.sessions.insert_one(session_doc)
+        # Store session data
+        session['buyer_cookie'] = buyer_cookie
+        session['return_url'] = return_url
 
         return response_xml
 
-    return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
+    return render_template('product_details.html', product=products[0], return_url=session.get('return_url', ''))
 
 @main.route('/catalog')
 def catalog():
-    return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
+    return_url = session.get('return_url', '')
+    buyer_cookie = session.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     # Retrieve product list from in-memory storage
@@ -107,26 +103,18 @@ def create_product():
 
     return render_template('create_product.html')
 
-
 @main.route('/checkout', methods=['POST'])
 def checkout():
     try:
         product_id = request.form.get('product_id')
-        return_url = request.form.get('return_url')
-        current_app.logger.info(f"Checkout initiated for return_url: {return_url} and product_id: {product_id}")
 
-        # Fetch buyer_cookie from the database using return_url
-        session_doc = current_app.db.sessions.find_one({'return_url': return_url})
-        current_app.logger.info(f"Session document fetched: {session_doc}")
-        
-        if session_doc:
-            buyer_cookie = session_doc.get('buyer_cookie')
-        else:
-            buyer_cookie = None
+        # Fetch buyer_cookie and return_url from the session
+        buyer_cookie = session.get('buyer_cookie')
+        return_url = session.get('return_url')
 
-        if not buyer_cookie:
-            current_app.logger.error("Buyer cookie not found for the provided return_url")
-            return "Buyer cookie not found", 400
+        if not buyer_cookie or not return_url:
+            current_app.logger.error("Buyer cookie or return URL not found in session")
+            return "Buyer cookie or return URL not found", 400
 
         current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
