@@ -57,8 +57,13 @@ def punchout():
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
 
         # Store session data
+        print('Setting session cookie')
+        print(f'buyer_cookie , {buyer_cookie}')
+        print(f'return_url , {return_url}')
         session['buyer_cookie'] = buyer_cookie
         session['return_url'] = return_url
+        print(session.get('buyer_cookie', ''))
+        session.get('return_url', '')
 
         return response_xml
 
