@@ -1,31 +1,17 @@
 from flask import Flask
-from pymongo import MongoClient
 from views import main
-from dotenv import load_dotenv
-import os
+from pymongo import MongoClient
 
-def create_app():
-    load_dotenv()  # Load environment variables from .env
+app = Flask(__name__)
+app.register_blueprint(main)
 
-    app = Flask(__name__)
-    app.register_blueprint(main)
+# Configure the app with hardcoded values
+app.config['DEBUG'] = True  # Set to False in production
+app.config['ENV'] = 'development' if app.config['DEBUG'] else 'production'
 
-    # Configure the app using environment variables
-    app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'false').lower() in ['true', '1', 't']
-    app.config['ENV'] = 'development' if app.config['DEBUG'] else 'production'
-    app.config['MONGO_URI'] = os.getenv('MONGODB_URI', 'mongodb+srv://sreeojcconsulting:QGkO89qCZ8jNqNZA@punchouttester.zwv1kcs.mongodb.net/?retryWrites=true&w=majority&appName=PunchoutTester')
-    app.config['MONGO_DB'] = os.getenv('MONGODB_DB', 'PunchOut')
-
-    # Initialize MongoDB client
-    try:
-        mongo_client = MongoClient(app.config['MONGO_URI'])
-        app.db = mongo_client[app.config['MONGO_DB']]
-    except Exception as e:
-        app.logger.error(f"Error initializing MongoDB client: {e}")
-        raise e
-
-    return app
+# Initialize MongoDB client
+mongo_client = MongoClient('mongodb+srv://sreeojcconsulting:QGkO89qCZ8jNqNZA@punchouttester.zwv1kcs.mongodb.net/?retryWrites=true&w=majority&appName=PunchoutTester')
+app.db = mongo_client.get_database('PunchOut')
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    app.run(host='0.0.0.0', port=5000)
