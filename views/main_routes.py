@@ -64,6 +64,14 @@ def punchout():
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
+    print(str(request))
+    print(f'parse url is {urlparse(request.url)}')
+    query_params = parse_qs(urlparse(request.url))
+    
+    # Extract buyer_cookie from the query parameters
+    custom_buyer_cookie = query_params.get('buyer_cookie', [None])[0]    
+
+    print(f'URL based data: {query_params}, {custom_buyer_cookie} ')    
     buyer_cookie = request.args.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
