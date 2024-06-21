@@ -5,7 +5,7 @@ def create_punchout_order_message(buyer_cookie, product):
     # Create the XML root element
     cxml = etree.Element(
         "cXML", 
-        payloadID="1718898801551.591.1348@amazon.com",
+        payloadID="1718898801551.591.1348@sreejith.co.uk",
         timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     )
     
@@ -21,7 +21,7 @@ def create_punchout_order_message(buyer_cookie, product):
     from_identity.text = "128990368"
     from_credential2 = etree.SubElement(from_cred, "Credential", domain="NetworkId")
     from_identity2 = etree.SubElement(from_credential2, "Identity")
-    from_identity2.text = "Amazon"
+    from_identity2.text = "Sree"
     
     to_cred = etree.SubElement(header, "To")
     to_credential = etree.SubElement(to_cred, "Credential", domain="NetworkId")
@@ -34,9 +34,9 @@ def create_punchout_order_message(buyer_cookie, product):
     sender_identity.text = "128990368"
     sender_credential2 = etree.SubElement(sender, "Credential", domain="NetworkId")
     sender_identity2 = etree.SubElement(sender_credential2, "Identity")
-    sender_identity2.text = "Amazon"
+    sender_identity2.text = "Sree"
     user_agent = etree.SubElement(sender, "UserAgent")
-    user_agent.text = "Amazon LLC eProcurement Application"
+    user_agent.text = "Sree LLC eProcurement Application"
     
     # Create the Message section
     message = etree.SubElement(cxml, "Message")
@@ -67,7 +67,7 @@ def create_punchout_order_message(buyer_cookie, product):
     
     # Correctly setting the xml:lang attribute
     nsmap = {'xml': 'http://www.w3.org/XML/1998/namespace'}
-    description = etree.SubElement(item_detail, "{http://www.w3.org/XML/1998/namespace}Description", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en-US"}, nsmap=nsmap)
+    description = etree.SubElement(item_detail, "Description", attrib={"xml:lang": "en-US"}, nsmap=nsmap)
     description.text = product["description"]
     
     unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
@@ -77,7 +77,7 @@ def create_punchout_order_message(buyer_cookie, product):
     manufacturer_part_id = etree.SubElement(item_detail, "ManufacturerPartID")
     manufacturer_part_id.text = product["manufacturer_part_id"]
     manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
-    manufacturer_name.text = product["manufacturer_name"]
+    manufacturer_name.text = "Sreejith"
     
     # Extrinsic fields
     extrinsic_sold_by = etree.SubElement(item_detail, "Extrinsic", name="soldBy")
