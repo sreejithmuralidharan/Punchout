@@ -1,7 +1,11 @@
 import lxml.etree as etree
 from datetime import datetime
+from flask import request
 
 def create_punchout_order_message(buyer_cookie, cart):
+    print('Inside punchout message', buyer_cookie)
+    arg_buyer_cookie = request.args.get('buyer_cookie')
+    print('Arg cookie is', arg_buyer_cookie)
     cxml = etree.Element("cXML", payloadID="1718898801551.591.1348@sreejith.co.uk", timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
 
     header = etree.SubElement(cxml, "Header")
