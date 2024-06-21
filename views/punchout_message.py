@@ -3,13 +3,10 @@ from datetime import datetime
 
 def create_punchout_order_message(buyer_cookie, cart):
     # Create the XML root element
-    cXML = etree.Element("cXML", payloadID="1718898801551.591.1348@sreejith.co.uk", timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
-    
-    # Define the DOCTYPE
-    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
+    cxml = etree.Element("cXML", payloadID="1718898801551.591.1348@sreejith.co.uk", timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
     
     # Create the Header section
-    header = etree.SubElement(cXML, "Header")
+    header = etree.SubElement(cxml, "Header")
     
     from_cred = etree.SubElement(header, "From")
     from_credential = etree.SubElement(from_cred, "Credential", domain="DUNS")
@@ -35,7 +32,7 @@ def create_punchout_order_message(buyer_cookie, cart):
     user_agent.text = "Sree LLC eProcurement Application"
 
     # Create the Message section
-    message = etree.SubElement(cXML, "Message")
+    message = etree.SubElement(cxml, "Message")
     punchout_order_message = etree.SubElement(message, "PunchOutOrderMessage")
 
     # BuyerCookie
@@ -99,5 +96,5 @@ def create_punchout_order_message(buyer_cookie, cart):
         extrinsic_preference.text = product["preference"]
 
     # Convert the XML tree to a string
-    cxml_string = etree.tostring(cXML, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
-    return f"{doc_type}\n{cxml_string}"
+    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">\n{cxml_string}'
