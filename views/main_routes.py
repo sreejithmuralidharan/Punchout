@@ -38,35 +38,28 @@ def punchout():
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
         # Extract BuyerCookie and BrowserFormPost URL using string functions
-        buyer_cookie = extract_value(
-            incoming_data, '<BuyerCookie>', '</BuyerCookie>')
-        return_url = extract_value(
-            incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
-
+        buyer_cookie = extract_value(incoming_data, '<BuyerCookie>', '</BuyerCookie>')
+        return_url = extract_value(incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
+        
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
-        start_page_url = saxutils.escape(url_for(
-            'main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
-
-        punchout_setup_response = etree.Element(
-            "cXML", payloadID=payload_id, timestamp=timestamp)
+        start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
+        
+        punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
         response = etree.SubElement(punchout_setup_response, "Response")
         status = etree.SubElement(response, "Status", code="200", text="OK")
         status.text = "Success"
-        punchout_setup_response_elem = etree.SubElement(
-            response, "PunchOutSetupResponse")
-        start_page = etree.SubElement(
-            punchout_setup_response_elem, "StartPage")
+        punchout_setup_response_elem = etree.SubElement(response, "PunchOutSetupResponse")
+        start_page = etree.SubElement(punchout_setup_response_elem, "StartPage")
         url_elem = etree.SubElement(start_page, "URL")
         url_elem.text = start_page_url
 
-        response_xml = etree.tostring(
-            punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+        response_xml = etree.tostring(punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
-
+        
         return response_xml
     return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
@@ -75,8 +68,7 @@ def punchout():
 def catalog():
     return_url = request.args.get('return_url', '')
     buyer_cookie = request.args.get('buyer_cookie', '')
-    current_app.logger.info(
-        f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
@@ -117,8 +109,7 @@ def create_product():
 def checkout():
     return_url = request.args.get('return_url', '')
     buyer_cookie = request.args.get('buyer_cookie', '')
-    current_app.logger.info(
-        f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
 
     # Retrieve product from in-memory storage
