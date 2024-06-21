@@ -63,7 +63,8 @@ def punchout():
         session['buyer_cookie'] = buyer_cookie
         session['return_url'] = return_url
         print(session.get('buyer_cookie', ''))
-        session.get('return_url', '')
+        print(session.get('return_url', ''))
+
 
         return response_xml
 
@@ -71,6 +72,10 @@ def punchout():
 
 @main.route('/catalog')
 def catalog():
+    print('Getting session cookie')
+    print(session.get('return_url', ''))
+    print(session.get('buyer_cookie', ''))
+
     return_url = session.get('return_url', '')
     buyer_cookie = session.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
