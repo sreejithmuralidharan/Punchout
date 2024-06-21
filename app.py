@@ -1,8 +1,9 @@
-from flask import Flask
+from flask import Flask, session
 from views import main
 from pymongo import MongoClient
 
 app = Flask(__name__)
+app.config['SESSION_COOKIE_PATH'] = '/'
 app.register_blueprint(main)
 
 # Configure the app with hardcoded values
