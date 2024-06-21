@@ -69,9 +69,15 @@ def catalog():
     query_params = parse_qs(parsed_url.query)
     print('query_params',query_params)
     
-    # Extract buyer_cookie from the query parameters
-    custom_buyer_cookie = query_params.get('buyer_cookie', [None])[0] 
-    print('custom_buyer_cookie',custom_buyer_cookie)
+    # Correct the query parameter keys
+    corrected_query_params = {}
+    for key, value in query_params.items():
+        corrected_key = key.replace('amp;', '')
+        corrected_query_params[corrected_key] = value
+    
+    # Extract buyer_cookie from the corrected query parameters
+    custom_buyer_cookie = corrected_query_params.get('buyer_cookie', [None])[0]
+    print('custom_buyer_cookie', custom_buyer_cookie)
 
 
 
