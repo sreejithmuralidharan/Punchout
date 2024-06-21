@@ -44,7 +44,8 @@ def punchout():
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
-        start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
+        start_page_url = url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True)
+        start_page_url = saxutils.escape(start_page_url)
         
         punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
         response = etree.SubElement(punchout_setup_response, "Response")
