@@ -1,4 +1,5 @@
-from flask import request, render_template, redirect, url_for, current_app, session
+import os
+from flask import request, render_template, redirect, url_for, current_app, jsonify, send_file, make_response
 from lxml import etree
 import xml.sax.saxutils as saxutils
 from datetime import datetime
@@ -21,7 +22,7 @@ def extract_value(xml_str, start_tag, end_tag):
 
 @main.route('/')
 def index():
-    return_url = session.get('return_url', '')
+    return_url = request.args.get('return_url', '')
     current_app.logger.info(f"Index - Return URL: {return_url}")
     return render_template('index.html', return_url=return_url)
 
@@ -31,11 +32,9 @@ def punchout():
         incoming_data = request.data.decode('utf-8')
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
+        # Extract BuyerCookie and BrowserFormPost URL using string functions
         buyer_cookie = extract_value(incoming_data, '<BuyerCookie>', '</BuyerCookie>')
         return_url = extract_value(incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
-
-        if not return_url:
-            current_app.logger.error("Failed to extract value for <BrowserFormPost><URL>")
         
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
@@ -44,11 +43,16 @@ def punchout():
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
         start_page_url = saxutils.escape(url_for('main.catalog', _external=True))
 
+        # Set cookies
+        response = make_response(render_template('product_details.html', product=products[0], return_url=return_url))
+        response.set_cookie('return_url', return_url)
+        response.set_cookie('buyer_cookie', buyer_cookie)
+
         punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
-        response = etree.SubElement(punchout_setup_response, "Response")
-        status = etree.SubElement(response, "Status", code="200", text="OK")
+        response_elem = etree.SubElement(punchout_setup_response, "Response")
+        status = etree.SubElement(response_elem, "Status", code="200", text="OK")
         status.text = "Success"
-        punchout_setup_response_elem = etree.SubElement(response, "PunchOutSetupResponse")
+        punchout_setup_response_elem = etree.SubElement(response_elem, "PunchOutSetupResponse")
         start_page = etree.SubElement(punchout_setup_response_elem, "StartPage")
         url_elem = etree.SubElement(start_page, "URL")
         url_elem.text = start_page_url
@@ -56,24 +60,14 @@ def punchout():
         response_xml = etree.tostring(punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
 
-        # Store session data
-        print('Setting session cookie')
-        print(f'buyer_cookie , {buyer_cookie}')
-        print(f'return_url , {return_url}')
-        session['buyer_cookie'] = buyer_cookie
-        session['return_url'] = return_url
-        print(session.get('buyer_cookie', ''))
-        print(session.get('return_url', ''))
+        return response
 
-
-        return response_xml
-
-    return render_template('product_details.html', product=products[0], return_url=return_url, buyer_cookie=buyer_cookie)
+    return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
 @main.route('/catalog')
 def catalog():
-    buyer_cookie = request.form.get('buyer_cookie')
-    return_url = request.form.get('return_url')
+    return_url = request.cookies.get('return_url', '')
+    buyer_cookie = request.cookies.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     # Retrieve product list from in-memory storage
@@ -100,43 +94,41 @@ def create_product():
             "item_condition": "New",
             "qualified_offer": "true",
             "upc": "UPC-123456789012",
-            "detail_page_url": f"https://example.com/product/{request.form['id']}",
+            "detail_page_url": f"https://punchout-nxnr.onrender.com/product/{request.form['id']}",
             "ean": "1234567890123",
             "preference": "default"
         }
-        current_app.db.products.insert_one(product_data)
+        products.append(product_data)
         return redirect(url_for('main.catalog'))
 
     return render_template('create_product.html')
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
-    try:
-        product_id = request.form.get('product_id')
+    return_url = request.cookies.get('return_url', '')
+    buyer_cookie = request.cookies.get('buyer_cookie', '')
+    current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    product_id = request.form.get('product_id')
 
-        # Fetch buyer_cookie and return_url from the session
-        buyer_cookie = session.get('buyer_cookie')
-        return_url = session.get('return_url')
+    # Retrieve product from in-memory storage
+    product = next((p for p in products if p['id'] == product_id), None)
 
-        if not buyer_cookie or not return_url:
-            current_app.logger.error("Buyer cookie or return URL not found in session")
-            return "Buyer cookie or return URL not found", 400
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
 
-        current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    # Log the order details for debugging purposes
+    order_details = create_punchout_order_message(buyer_cookie, product)
+    current_app.logger.info(f"Order Details: {order_details}")
 
-        product = current_app.db.products.find_one({'id': product_id})
-        if not product:
-            current_app.logger.error("Product not found")
-            return "Product not found", 404
+    # Save the XML to a file
+    xml_file_path = os.path.join(os.getcwd(), 'order_details.xml')
+    with open(xml_file_path, 'w') as file:
+        file.write(order_details)
 
-        order_details = create_punchout_order_message(buyer_cookie, [product])
-        current_app.logger.info(f"Order Details: {order_details}")
+    # Send the file as a downloadable response
+    return send_file(xml_file_path, as_attachment=True, download_name='order_details.xml')
 
-        response = redirect(return_url)
-        response.headers['buyer_cookie'] = buyer_cookie
-        current_app.logger.info(f"Redirecting to: {response.location}")
-
-        return response
-    except Exception as e:
-        current_app.logger.error(f"Error in checkout route: {str(e)}")
-        return str(e), 500
+    if return_url:
+        current_app.logger.info(f"Redirecting to: {return_url}")
+        return redirect(return_url)
+    return order_details
