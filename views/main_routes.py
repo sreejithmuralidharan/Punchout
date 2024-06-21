@@ -19,6 +19,7 @@ def extract_value(xml_str, start_tag, end_tag):
     except ValueError:
         return None
 
+
 @main.route('/')
 def index():
     return_url = request.cookies.get('return_url', '')
@@ -31,21 +32,22 @@ def punchout():
         incoming_data = request.data.decode('utf-8')
         current_app.logger.info(f"PunchOut - Incoming Data: {incoming_data}")
 
-        buyer_cookie = extract_value(incoming_data, '<BuyerCookie>', '</BuyerCookie>')
-        return_url = extract_value(incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
-
-        if not return_url:
-            current_app.logger.error("Failed to extract value for <BrowserFormPost><URL>")
-            return "Failed to extract return URL", 400
+        # Extract BuyerCookie and BrowserFormPost URL using string functions
+        buyer_cookie = extract_value(
+            incoming_data, '<BuyerCookie>', '</BuyerCookie>')
+        return_url = extract_value(
+            incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
 
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
-        start_page_url = saxutils.escape(url_for('main.catalog', _external=True))
+        start_page_url = saxutils.escape(url_for(
+            'main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
 
-        punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
+        punchout_setup_response = etree.Element(
+            "cXML", payloadID=payload_id, timestamp=timestamp)
         response = etree.SubElement(punchout_setup_response, "Response")
         status = etree.SubElement(response, "Status", code="200", text="OK")
         status.text = "Success"
@@ -57,20 +59,16 @@ def punchout():
         response_xml = etree.tostring(punchout_setup_response, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
         current_app.logger.info(f"PunchOut Setup Response: {response_xml}")
 
-        # Set cookies instead of session
-        response = make_response(response_xml)
-        response.set_cookie('buyer_cookie', buyer_cookie)
-        response.set_cookie('return_url', return_url)
+        return response_xml
+    return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
-        return response
-
-    return render_template('product_details.html', product=products[0])
 
 @main.route('/catalog')
 def catalog():
-    buyer_cookie = request.cookies.get('buyer_cookie', '')
-    return_url = request.cookies.get('return_url', '')
-    current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    return_url = request.args.get('return_url', '')
+    buyer_cookie = request.args.get('buyer_cookie', '')
+    current_app.logger.info(
+        f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
 
@@ -106,8 +104,11 @@ def create_product():
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
-    try:
-        product_id = request.form.get('product_id')
+    return_url = request.args.get('return_url', '')
+    buyer_cookie = request.args.get('buyer_cookie', '')
+    current_app.logger.info(
+        f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    product_id = request.form.get('product_id')
 
         # Fetch buyer_cookie and return_url from cookies
         buyer_cookie = request.cookies.get('buyer_cookie')
