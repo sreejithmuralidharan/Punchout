@@ -1,4 +1,5 @@
-from flask import request, render_template, redirect, url_for, current_app, jsonify
+import os
+from flask import request, render_template, redirect, url_for, current_app, jsonify, send_file
 from lxml import etree
 import xml.sax.saxutils as saxutils
 from datetime import datetime
@@ -18,8 +19,6 @@ def extract_value(xml_str, start_tag, end_tag):
         return xml_str[start_index:end_index].strip()
     except ValueError:
         return None
-
-
 
 @main.route('/')
 def index():
@@ -59,7 +58,6 @@ def punchout():
         return response_xml
     return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
-
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
@@ -90,7 +88,7 @@ def create_product():
             "item_condition": "New",
             "qualified_offer": "true",
             "upc": "UPC-123456789012",
-            "detail_page_url": f"https://example.com/product/{request.form['id']}",
+            "detail_page_url": f"https://punchout-nxnr.onrender.com/product/{request.form['id']}",
             "ean": "1234567890123",
             "preference": "default"
         }
@@ -98,7 +96,6 @@ def create_product():
         return redirect(url_for('main.catalog'))
 
     return render_template('create_product.html')
-
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
@@ -116,6 +113,14 @@ def checkout():
     # Log the order details for debugging purposes
     order_details = create_punchout_order_message(buyer_cookie, product)
     current_app.logger.info(f"Order Details: {order_details}")
+
+    # Save the XML to a file
+    xml_file_path = os.path.join(os.getcwd(), 'order_details.xml')
+    with open(xml_file_path, 'w') as file:
+        file.write(order_details)
+
+    # Send the file as a downloadable response
+    return send_file(xml_file_path, as_attachment=True, download_name='order_details.xml')
 
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
