@@ -64,19 +64,19 @@ def punchout():
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
-    print(str(request))
-    print(f'parse url is {urlparse(request.url)}')
-    query_params = parse_qs(urlparse(request.url))
+    parsed_url = urlparse(request.url)
+    print('parsed_url',parsed_url)
+    query_params = parse_qs(parsed_url.query)
+    print('query_params',query_params)
     
     # Extract buyer_cookie from the query parameters
-    custom_buyer_cookie = query_params.get('buyer_cookie', [None])[0]    
+    custom_buyer_cookie = query_params.get('buyer_cookie', [None])[0] 
+    print('custom_buyer_cookie',custom_buyer_cookie)
 
-    print(f'URL based data: {query_params}, {custom_buyer_cookie} ')    
-    buyer_cookie = request.args.get('buyer_cookie', '')
-    current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+
 
     # Retrieve product list from in-memory storage
-    return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
+    return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=custom_buyer_cookie)
 
 @main.route('/product', methods=['GET', 'POST'])
 def create_product():
@@ -116,13 +116,6 @@ def checkout():
 
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
-    parsed_url = urlparse(request.url)
-    query_params = parse_qs(parsed_url.query)
-    
-    # Extract buyer_cookie from the query parameters
-    custom_buyer_cookie = query_params.get('buyer_cookie', [None])[0]    
-
-    print(f'URL based data: {parsed_url},{query_params}, {custom_buyer_cookie} ')
 
     # Retrieve product from in-memory storage
     product = next((p for p in products if p['id'] == product_id), None)
