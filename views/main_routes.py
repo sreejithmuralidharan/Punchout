@@ -5,6 +5,7 @@ from datetime import datetime
 from . import main
 from .utils import load_products
 from .punchout_message import create_punchout_order_message
+from urllib.parse import urlparse, parse_qs
 
 # Load products from JSON file
 products = load_products('products.json')
@@ -104,8 +105,16 @@ def create_product():
 def checkout():
     return_url = request.args.get('return_url', '')
     buyer_cookie = request.args.get('buyer_cookie', '')
+
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
+    parsed_url = urlparse(request.url)
+    query_params = parse_qs(parsed_url.query)
+    
+    # Extract buyer_cookie from the query parameters
+    custom_buyer_cookie = query_params.get('buyer_cookie', [None])[0]    
+
+    print(f'URL based data: {parsed_url},{query_params}, {custom_buyer_cookie} ')
 
     # Retrieve product from in-memory storage
     product = next((p for p in products if p['id'] == product_id), None)
