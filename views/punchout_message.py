@@ -47,9 +47,10 @@ def create_punchout_order_message(buyer_cookie, cart):
     header = etree.SubElement(punchout_order_message, "PunchOutOrderMessageHeader", operationAllowed="create")
     total = etree.SubElement(header, "Total")
     money = etree.SubElement(total, "Money", currency="USD")
-    money.text = str(sum(float(product["price"]) for product in cart))
+    money.text = str(sum(float(item["price"]) for item in cart))
     
     for product in cart:
+        # ItemIn
         item_in = etree.SubElement(punchout_order_message, "ItemIn", quantity="1")
         item_id = etree.SubElement(item_in, "ItemID")
         supplier_part_id = etree.SubElement(item_id, "SupplierPartID")
@@ -62,9 +63,8 @@ def create_punchout_order_message(buyer_cookie, cart):
         money = etree.SubElement(unit_price, "Money", currency="USD")
         money.text = product["unit_price"]
         
-        # Correctly setting the xml:lang attribute
-        nsmap = {'xml': 'http://www.w3.org/XML/1998/namespace'}
-        description = etree.SubElement(item_detail, "Description", attrib={"{http://www.w3.org/XML/1998/namespace}lang": "en-US"}, nsmap=nsmap)
+        description = etree.SubElement(item_detail, "Description", nsmap={"xml": "http://www.w3.org/XML/1998/namespace"})
+        description.attrib["{http://www.w3.org/XML/1998/namespace}lang"] = "en-US"
         description.text = product["description"]
         
         unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
@@ -99,5 +99,8 @@ def create_punchout_order_message(buyer_cookie, cart):
         extrinsic_preference.text = product["preference"]
     
     # Convert the XML tree to a string
-    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
-    return f"<!DOCTYPE cXML SYSTEM \"http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd\">\n{cxml_string}"
+    xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>'
+    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
+    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=False, encoding="UTF-8").decode()
+    
+    return f"{xml_declaration}\n{doc_type}\n{cxml_string}"

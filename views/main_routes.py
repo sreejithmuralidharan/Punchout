@@ -37,7 +37,7 @@ def punchout():
 
         session['return_url'] = return_url
         session['buyer_cookie'] = buyer_cookie
-        session['cart'] = []  # Clear the cart on new punchout request
+        session['cart'] = []  # Clear the cart on a new punchout request
         
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
@@ -141,10 +141,6 @@ def checkout():
 @main.route('/proceed_checkout', methods=['POST'])
 def proceed_checkout():
     return_url = session.get('return_url', '')
-    buyer_cookie = session.get('buyer_cookie', '')
-
-    current_app.logger.info(f"Proceed Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
-
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
