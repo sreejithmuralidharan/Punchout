@@ -68,6 +68,9 @@ def catalog():
     buyer_cookie = request.args.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
+    # Log for debugging
+    current_app.logger.info(f"Catalog - URL Params: return_url={return_url}, buyer_cookie={buyer_cookie}")
+
     # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
 
@@ -107,6 +110,9 @@ def checkout():
     buyer_cookie = request.args.get('buyer_cookie', '')
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     product_id = request.form.get('product_id')
+
+    # Log for debugging
+    current_app.logger.info(f"Checkout - URL Params: return_url={return_url}, buyer_cookie={buyer_cookie}")
 
     # Retrieve product from in-memory storage
     product = next((p for p in products if p['id'] == product_id), None)
