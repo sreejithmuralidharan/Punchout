@@ -1,4 +1,3 @@
-import os
 from flask import request, render_template, redirect, url_for, current_app, jsonify, send_file, session, Response
 from lxml import etree
 import xml.sax.saxutils as saxutils
@@ -35,13 +34,16 @@ def punchout():
         # Extract BuyerCookie and BrowserFormPost URL using string functions
         buyer_cookie = extract_value(incoming_data, '<BuyerCookie>', '</BuyerCookie>')
         return_url = extract_value(incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
+
+        session['return_url'] = return_url
+        session['buyer_cookie'] = buyer_cookie
         
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
-        start_page_url = saxutils.escape(url_for('main.catalog', return_url=return_url, buyer_cookie=buyer_cookie, _external=True))
+        start_page_url = saxutils.escape(url_for('main.catalog', _external=True))
         
         punchout_setup_response = etree.Element("cXML", payloadID=payload_id, timestamp=timestamp)
         response = etree.SubElement(punchout_setup_response, "Response")
@@ -60,8 +62,8 @@ def punchout():
 
 @main.route('/catalog')
 def catalog():
-    return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
+    return_url = session.get('return_url', '')
+    buyer_cookie = session.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
 
     # Retrieve product list from in-memory storage
@@ -109,19 +111,19 @@ def add_to_cart():
     cart.append(product)
     session['cart'] = cart
 
-    return redirect(url_for('main.catalog', return_url=request.form.get('return_url', ''), buyer_cookie=request.form.get('buyer_cookie', '')))
+    return redirect(url_for('main.catalog', return_url=session.get('return_url', ''), buyer_cookie=session.get('buyer_cookie', '')))
 
 @main.route('/cart')
 def cart():
     cart = session.get('cart', [])
-    return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
+    return_url = session.get('return_url', '')
+    buyer_cookie = session.get('buyer_cookie', '')
     return render_template('cart.html', cart=cart, return_url=return_url, buyer_cookie=buyer_cookie)
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
-    return_url = request.args.get('return_url', '')
-    buyer_cookie = request.args.get('buyer_cookie', '')
+    return_url = session.get('return_url', '')
+    buyer_cookie = session.get('buyer_cookie', '')
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
     cart = session.get('cart', [])
 
@@ -137,7 +139,7 @@ def checkout():
 
 @main.route('/proceed_checkout', methods=['POST'])
 def proceed_checkout():
-    return_url = request.args.get('return_url', '')
+    return_url = session.get('return_url', '')
     if return_url:
         current_app.logger.info(f"Redirecting to: {return_url}")
         return redirect(return_url)
