@@ -35,12 +35,14 @@ def punchout():
         buyer_cookie = extract_value(incoming_data, '<BuyerCookie>', '</BuyerCookie>')
         return_url = extract_value(incoming_data, '<BrowserFormPost><URL>', '</URL></BrowserFormPost>')
 
+        session.clear()  # Clear the session data
         session['return_url'] = return_url
         session['buyer_cookie'] = buyer_cookie
         session['cart'] = []  # Clear the cart on a new punchout request
         
         current_app.logger.info(f"PunchOut - Buyer Cookie: {buyer_cookie}")
         current_app.logger.info(f"PunchOut - Return URL: {return_url}")
+        current_app.logger.info(f"Session after PunchOut: {dict(session)}")
 
         payload_id = saxutils.escape("2023-04-15T12:00:00-07:00")
         timestamp = saxutils.escape("2023-04-15T12:00:00-07:00")
@@ -66,6 +68,7 @@ def catalog():
     return_url = session.get('return_url', '')
     buyer_cookie = session.get('buyer_cookie', '')
     current_app.logger.info(f"Catalog - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    current_app.logger.info(f"Session in Catalog: {dict(session)}")
 
     # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
@@ -114,6 +117,7 @@ def add_to_cart():
 
     current_app.logger.info(f"Added to cart: {product['name']}")
     current_app.logger.info(f"Cart: {session['cart']}")
+    current_app.logger.info(f"Session after adding to cart: {dict(session)}")
 
     return redirect(url_for('main.catalog', return_url=session.get('return_url', ''), buyer_cookie=session.get('buyer_cookie', '')))
 
@@ -122,6 +126,8 @@ def cart():
     cart = session.get('cart', [])
     return_url = session.get('return_url', '')
     buyer_cookie = session.get('buyer_cookie', '')
+    current_app.logger.info(f"Cart: {cart}")
+    current_app.logger.info(f"Session in Cart: {dict(session)}")
     return render_template('cart.html', cart=cart, return_url=return_url, buyer_cookie=buyer_cookie)
 
 @main.route('/checkout', methods=['POST'])
@@ -129,6 +135,7 @@ def checkout():
     return_url = session.get('return_url', '')
     buyer_cookie = session.get('buyer_cookie', '')
     current_app.logger.info(f"Checkout - Return URL: {return_url}, Buyer Cookie: {buyer_cookie}")
+    current_app.logger.info(f"Session in Checkout: {dict(session)}")
     cart = session.get('cart', [])
 
     if not cart:
