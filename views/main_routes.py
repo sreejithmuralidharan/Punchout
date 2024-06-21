@@ -112,6 +112,9 @@ def add_to_cart():
     cart.append(product)
     session['cart'] = cart
 
+    current_app.logger.info(f"Added to cart: {product['name']}")
+    current_app.logger.info(f"Cart: {session['cart']}")
+
     return redirect(url_for('main.catalog', return_url=session.get('return_url', ''), buyer_cookie=session.get('buyer_cookie', '')))
 
 @main.route('/cart')
