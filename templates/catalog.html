@@ -1,19 +1,54 @@
 {% extends "base.html" %}
 
+{% block title %}Catalog{% endblock %}
+
 {% block content %}
-<h1>Product Catalog</h1>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     {% for product in products %}
-    <div class="border rounded p-4">
+    <div class="bg-white shadow-md rounded-lg p-4">
         <img src="{{ product.image }}" alt="{{ product.name }}" class="w-full h-64 object-contain mb-4">
-        <h2 class="text-xl font-bold">{{ product.name }}</h2>
-        <p class="text-gray-700">{{ product.description }}</p>
-        <p class="text-lg font-semibold mt-2">${{ product.price }}</p>
-        <form method="post" action="{{ url_for('main.checkout', return_url=return_url, buyer_cookie=buyer_cookie) }}">
+        <h2 class="text-lg font-bold">{{ product.name }}</h2>
+        <p class="text-gray-600">{{ product.description }}</p>
+        <p class="text-gray-800 font-semibold">${{ product.price }}</p>
+        <form method="post" action="/checkout" onsubmit="downloadFile(event, '{{ product.id }}')">
             <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="return_url" value="{{ return_url }}">
+            <input type="hidden" name="buyer_cookie" value="{{ buyer_cookie }}">
             <button type="submit" class="mt-4 bg-blue-500 text-white py-2 px-4 rounded">Add to Cart</button>
         </form>
     </div>
     {% endfor %}
 </div>
+
+<script>
+function downloadFile(event, productId) {
+    event.preventDefault();
+    const form = event.target;
+    const data = new FormData(form);
+    const returnUrl = data.get('return_url');
+    const buyerCookie = data.get('buyer_cookie');
+
+    fetch(`/checkout?return_url=${encodeURIComponent(returnUrl)}&buyer_cookie=${encodeURIComponent(buyerCookie)}`, {
+        method: 'POST',
+        body: data
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'order_details.xml';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+
+        // Continue to the next step after download
+        if (returnUrl) {
+            window.location.href = returnUrl;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
 {% endblock %}

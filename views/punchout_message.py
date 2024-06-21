@@ -77,7 +77,7 @@ def create_punchout_order_message(buyer_cookie, product):
     manufacturer_part_id = etree.SubElement(item_detail, "ManufacturerPartID")
     manufacturer_part_id.text = product["manufacturer_part_id"]
     manufacturer_name = etree.SubElement(item_detail, "ManufacturerName")
-    manufacturer_name.text = "Sreejith"
+    manufacturer_name.text = product["manufacturer_name"]
     
     # Extrinsic fields
     extrinsic_sold_by = etree.SubElement(item_detail, "Extrinsic", name="soldBy")
