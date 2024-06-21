@@ -5,31 +5,29 @@ from datetime import datetime
 from . import main
 from .utils import load_products
 from .punchout_message import create_punchout_order_message
+import urllib.parse
 
 # Load products from JSON file
 products = load_products('products.json')
 
-
+# Function to extract values between specific tags
 def extract_value(xml_str, start_tag, end_tag):
     """Extract the value between start_tag and end_tag in xml_str."""
     try:
         start_index = xml_str.index(start_tag) + len(start_tag)
         end_index = xml_str.index(end_tag, start_index)
         extracted_value = xml_str[start_index:end_index].strip()
-        current_app.logger.info(
-            f"Extracted value for {start_tag}: {extracted_value}")
+        current_app.logger.info(f"Extracted value for {start_tag}: {extracted_value}")
         return extracted_value
     except ValueError:
         current_app.logger.error(f"Failed to extract value for {start_tag}")
         return None
-
 
 @main.route('/')
 def index():
     return_url = request.args.get('return_url', '')
     current_app.logger.info(f"Index - Return URL: {return_url}")
     return render_template('index.html', return_url=return_url)
-
 
 @main.route('/punchout', methods=['GET', 'POST'])
 def punchout():
@@ -63,7 +61,6 @@ def punchout():
         return response_xml
     return render_template('product_details.html', product=products[0], return_url=request.args.get('return_url', ''))
 
-
 @main.route('/catalog')
 def catalog():
     return_url = request.args.get('return_url', '')
@@ -72,7 +69,6 @@ def catalog():
 
     # Retrieve product list from in-memory storage
     return render_template('catalog.html', products=products, return_url=return_url, buyer_cookie=buyer_cookie)
-
 
 @main.route('/product', methods=['GET', 'POST'])
 def create_product():
@@ -103,7 +99,6 @@ def create_product():
         return redirect(url_for('main.catalog'))
 
     return render_template('create_product.html')
-
 
 @main.route('/checkout', methods=['POST'])
 def checkout():
