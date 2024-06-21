@@ -1,5 +1,5 @@
 from flask import Flask
-from views import main
+from views.main_routes import main
 from dotenv import load_dotenv
 import os
 
