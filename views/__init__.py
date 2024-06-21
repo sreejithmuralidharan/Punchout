@@ -1,2 +1,5 @@
-# views/__init__.py
-# This can be an empty file or can include necessary imports for the views module
+from flask import Blueprint
+
+main = Blueprint('main', __name__)
+
+from . import main_routes

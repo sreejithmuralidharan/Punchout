@@ -2,13 +2,16 @@ import lxml.etree as etree
 from datetime import datetime
 
 def create_punchout_order_message(buyer_cookie, cart):
+    # Define the DOCTYPE
+    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
+
     # Create the XML root element
     cxml = etree.Element(
-        "cXML", 
+        "cXML",
         payloadID="1718898801551.591.1348@sreejith.co.uk",
         timestamp=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     )
-    
+
     # Create the Header section
     header = etree.SubElement(cxml, "Header")
     
@@ -63,8 +66,8 @@ def create_punchout_order_message(buyer_cookie, cart):
         money = etree.SubElement(unit_price, "Money", currency="USD")
         money.text = product["unit_price"]
         
-        description = etree.SubElement(item_detail, "Description", nsmap={"xml": "http://www.w3.org/XML/1998/namespace"})
-        description.attrib["{http://www.w3.org/XML/1998/namespace}lang"] = "en-US"
+        # Correctly setting the xml:lang attribute
+        description = etree.SubElement(item_detail, "Description", attrib={"xml:lang": "en-US"})
         description.text = product["description"]
         
         unit_of_measure = etree.SubElement(item_detail, "UnitOfMeasure")
@@ -97,10 +100,7 @@ def create_punchout_order_message(buyer_cookie, cart):
         extrinsic_ean.text = product["ean"]
         extrinsic_preference = etree.SubElement(item_detail, "Extrinsic", name="preference")
         extrinsic_preference.text = product["preference"]
-    
+
     # Convert the XML tree to a string
-    xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>'
-    doc_type = '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.024/cXML.dtd">'
-    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=False, encoding="UTF-8").decode()
-    
-    return f"{xml_declaration}\n{doc_type}\n{cxml_string}"
+    cxml_string = etree.tostring(cxml, pretty_print=True, xml_declaration=True, encoding="UTF-8").decode()
+    return f"<?xml version='1.0' encoding='UTF-8'?>\n{doc_type}\n{cxml_string}"
